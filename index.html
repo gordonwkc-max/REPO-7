@@ -1,0 +1,2448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Buyback Counter — a 20 second rehearsal</title>
+<style>
+  :root{
+    --bg:#0a0d0f;
+    --ink:#ece6d9;
+    --dim:#8b8b83;
+    --line:rgba(236,230,217,.14);
+    --line-soft:rgba(236,230,217,.07);
+    --amber:#f0b862;
+    --amber-dim:rgba(240,184,98,.18);
+    --green:#46e08b;
+    --red:#e8705c;
+    --panel:rgba(14,18,20,.82);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    overflow:hidden; -webkit-font-smoothing:antialiased;
+  }
+  #app{position:fixed;inset:0;display:flex;flex-direction:column;min-height:0}
+
+  /* ---------- stage ---------- */
+  #stageWrap{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
+  #stage{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* ---------- header ---------- */
+  header.top{
+    position:absolute;top:0;left:0;right:0;z-index:5;
+    display:flex;align-items:flex-start;justify-content:space-between;gap:18px;
+    padding:18px 22px 0;pointer-events:none;
+  }
+  .brand{display:flex;flex-direction:column;gap:6px;pointer-events:none}
+  .brand .row{display:flex;align-items:center;gap:9px}
+  .gem{
+    width:9px;height:9px;transform:rotate(45deg);border-radius:1px;
+    background:linear-gradient(135deg,#9dffc8,#28c973 60%,#0d6b3c);
+    box-shadow:0 0 10px rgba(70,224,139,.75);
+  }
+  .brand h1{
+    font-family:var(--sans);font-size:12.5px;font-weight:600;letter-spacing:.24em;
+    margin:0;text-transform:uppercase;color:#f4eee1;
+  }
+  .brand .sub{
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--dim);
+    text-transform:uppercase;
+  }
+
+  /* origin cluster */
+  .origin{
+    pointer-events:auto;display:flex;align-items:center;gap:10px;
+    background:rgba(10,13,15,.55);border:1px solid var(--line-soft);border-radius:10px;
+    padding:8px 10px;backdrop-filter:blur(10px);
+  }
+  .origin .lbl{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:#9a9a90;
+    text-transform:uppercase;padding-right:2px;
+  }
+  .oField{display:flex;align-items:center;gap:5px}
+  .oField span{
+    font-family:var(--mono);font-size:9.5px;color:#6f736f;letter-spacing:.1em;
+  }
+  .oField input{
+    width:52px;background:rgba(255,255,255,.045);border:1px solid var(--line-soft);
+    color:#f2ecdf;font-family:var(--mono);font-size:11px;padding:4px 5px;border-radius:5px;
+    text-align:center;-moz-appearance:textfield;appearance:textfield;
+  }
+  .oField input::-webkit-outer-spin-button,
+  .oField input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .oField input:focus{outline:none;border-color:rgba(240,184,98,.55);background:rgba(240,184,98,.08)}
+  .origin button{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:#9a9a90;
+    background:transparent;border:1px solid var(--line-soft);border-radius:5px;
+    padding:5px 7px;cursor:pointer;text-transform:uppercase;
+  }
+  .origin button:hover{color:var(--amber);border-color:rgba(240,184,98,.4)}
+
+  /* ---------- dock ---------- */
+  footer.dock{
+    flex:0 0 auto;position:relative;z-index:6;
+    background:linear-gradient(180deg,rgba(10,13,15,.2),rgba(10,13,15,.92) 22%,#0a0d0f 100%);
+    border-top:1px solid var(--line-soft);
+    padding:14px 22px 16px;
+    display:flex;flex-direction:column;gap:12px;
+  }
+  .transport{display:flex;align-items:center;gap:14px}
+  .btn{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:#dcd6c8;background:rgba(255,255,255,.035);border:1px solid var(--line);
+    padding:9px 13px;border-radius:7px;cursor:pointer;transition:.14s ease;
+    display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+  }
+  .btn:hover{background:rgba(255,255,255,.075);border-color:rgba(236,230,217,.28);color:#fff}
+  .btn:active{transform:translateY(1px)}
+  .btn.play{min-width:96px;justify-content:center;color:#12100c;background:var(--amber);border-color:var(--amber);font-weight:600}
+  .btn.play:hover{background:#ffc978;border-color:#ffc978;color:#12100c}
+  .btn .tri{width:0;height:0;border-style:solid}
+  .btn .tri.p{border-width:5px 0 5px 8px;border-color:transparent transparent transparent currentColor;margin-left:1px}
+  .btn .tri.s{width:8px;height:10px;border:none;background:currentColor;
+    clip-path:polygon(0 0,35% 0,35% 100%,0 100%,0 0,100% 0,100% 100%,65% 100%,65% 0)}
+  .btn.ghost{background:transparent;border-color:var(--line-soft);color:#8e8e86}
+  .btn.ghost:hover{color:#ded8ca;border-color:var(--line)}
+  .clock{
+    font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:#cfc9bb;white-space:nowrap;
+    font-variant-numeric:tabular-nums;min-width:104px;
+  }
+  .clock b{color:#fff;font-weight:600}
+  .clock i{color:#5f625d;font-style:normal}
+
+  /* seek */
+  .seek{position:relative;flex:1 1 auto;min-width:120px;height:30px;display:flex;align-items:center;
+    touch-action:none;cursor:pointer;user-select:none}
+  .seek .rail{
+    position:absolute;left:0;right:0;height:5px;border-radius:3px;
+    background:rgba(255,255,255,.075);overflow:hidden;
+  }
+  .seek .win{position:absolute;top:0;bottom:0;background:rgba(240,184,98,.16);
+    border-left:1px solid rgba(240,184,98,.35);border-right:1px solid rgba(240,184,98,.35)}
+  .seek .fill{position:absolute;top:0;bottom:0;left:0;width:0;
+    background:linear-gradient(90deg,#a5813f,var(--amber));}
+  .seek .ticks{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
+  .seek .tick{position:absolute;top:9px;width:1px;height:12px;background:rgba(236,230,217,.28)}
+  .seek .tick.major{height:15px;top:7.5px;background:rgba(236,230,217,.5)}
+  .seek .tick em{
+    position:absolute;top:21px;left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:8.5px;font-style:normal;color:#6c706b;letter-spacing:.08em;
+  }
+  .seek .knob{
+    position:absolute;width:13px;height:13px;border-radius:50%;left:0;top:50%;
+    transform:translate(-50%,-50%);background:#fff5e2;
+    box-shadow:0 0 0 3px rgba(240,184,98,.16),0 0 14px rgba(240,184,98,.55);
+    pointer-events:none;
+  }
+  .seek:focus{outline:none}
+  .seek:focus-visible .knob{box-shadow:0 0 0 4px rgba(240,184,98,.4),0 0 18px rgba(240,184,98,.7)}
+
+  .speeds{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .speeds .sb{
+    font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:#8e8e86;background:transparent;
+    border:0;border-right:1px solid var(--line-soft);padding:9px 10px;cursor:pointer;transition:.12s;
+  }
+  .speeds .sb:last-child{border-right:0}
+  .speeds .sb:hover{color:#e6e0d2;background:rgba(255,255,255,.05)}
+  .speeds .sb.on{color:#12100c;background:var(--amber);font-weight:600}
+
+  /* inputs row */
+  .inputs{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .inputs .tag{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:#7d817c;text-transform:uppercase;
+    padding-right:2px;
+  }
+  .ib{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:#e2dccd;background:rgba(255,255,255,.04);border:1px solid var(--line);
+    padding:9px 14px;border-radius:7px;cursor:pointer;transition:.14s;position:relative;
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .ib .k{
+    font-size:8.5px;color:#7d817c;border:1px solid var(--line-soft);border-radius:3px;padding:1px 4px;
+  }
+  .ib:hover:not(.off){background:rgba(255,255,255,.08);border-color:rgba(236,230,217,.3)}
+  .ib.on-hold{background:rgba(70,224,139,.14);border-color:rgba(70,224,139,.55);color:#b9ffd8}
+  .ib.off{opacity:.34;cursor:not-allowed}
+  .ib.flash{animation:flash .34s ease}
+  @keyframes flash{0%{background:rgba(232,112,92,.3);border-color:var(--red)}100%{}}
+  .ib .dotp{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5}
+
+  .status{
+    margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#787c77;
+  }
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-soft);
+    padding:5px 8px;border-radius:5px;background:rgba(255,255,255,.025);color:#c9c3b5;
+  }
+  .chip s{text-decoration:none;color:#6f736f}
+  .chip .v{color:#efe9db;font-weight:600}
+  .chip .v.on{color:var(--green)}
+  .chip .v.warn{color:var(--amber)}
+  .chip .v.bad{color:var(--red)}
+  .chip .v.mute{color:#8a8e89}
+
+  .hint{
+    font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:#5c605c;
+    text-transform:uppercase;
+  }
+  @media (max-width:760px){
+    header.top{padding:12px 14px 0}
+    .brand h1{font-size:11px;letter-spacing:.18em}
+    footer.dock{padding:11px 12px 13px;gap:9px}
+    .transport{flex-wrap:wrap;gap:9px}
+    .seek{order:5;flex-basis:100%;min-width:0}
+    .clock{min-width:0}
+    .btn.play{min-width:84px}
+    .origin{padding:6px 7px;gap:6px}
+    .oField input{width:44px}
+    .hint{display:none}
+    .status{font-size:8.5px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stageWrap">
+    <canvas id="stage" aria-label="The Buyback Counter, a voxel diorama"></canvas>
+    <header class="top">
+      <div class="brand">
+        <div class="row"><span class="gem"></span><h1>The Buyback Counter</h1></div>
+        <div class="sub">a twenty-second rehearsal · voxel diorama</div>
+      </div>
+      <div class="origin" title="World origin. Moving it translates the diorama; the camera follows.">
+        <span class="lbl">Origin</span>
+        <label class="oField"><span>X</span><input id="ox" type="number" step="0.5" value="0" inputmode="decimal"></label>
+        <label class="oField"><span>Y</span><input id="oy" type="number" step="0.5" value="0" inputmode="decimal"></label>
+        <label class="oField"><span>Z</span><input id="oz" type="number" step="0.5" value="0" inputmode="decimal"></label>
+        <button id="originReset" title="Back to the default origin">zero</button>
+      </div>
+    </header>
+  </div>
+
+  <footer class="dock">
+    <div class="transport">
+      <button class="btn play" id="play" aria-label="Play or pause">
+        <span class="tri p" id="playIcon"></span><span id="playLabel">Play</span>
+      </button>
+      <div class="clock"><b id="clockNow">00.00</b><i> / 20.00 s</i></div>
+      <div class="seek" id="seek" role="slider" tabindex="0" aria-label="Seek, zero to twenty seconds"
+           aria-valuemin="0" aria-valuemax="20" aria-valuenow="0">
+        <div class="rail"><div class="win" id="seekWin"></div><div class="fill" id="seekFill"></div></div>
+        <div class="ticks" id="seekTicks"></div>
+        <div class="knob" id="seekKnob"></div>
+      </div>
+      <div class="speeds" id="speeds" aria-label="Playback speed">
+        <button class="sb" data-sp="0.5">0.5×</button>
+        <button class="sb on" data-sp="1">1×</button>
+        <button class="sb" data-sp="2">2×</button>
+      </div>
+      <button class="btn ghost" id="reset" title="Pause at zero and clear recorded inputs">Reset</button>
+    </div>
+    <div class="inputs">
+      <span class="tag">Inputs</span>
+      <button class="ib" id="inTake" data-type="take"><span class="dotp"></span>Take <span class="k">Q</span></button>
+      <button class="ib" id="inReturn" data-type="return"><span class="dotp"></span>Return <span class="k">W</span></button>
+      <button class="ib" id="inInspect" data-type="inspect"><span class="dotp"></span>Inspect rear <span class="k">E</span></button>
+      <span class="hint">accepted 4.00 → 11.99 s</span>
+      <div class="status">
+        <span class="chip"><s>branch</s><span class="v mute" id="stBranch">pending</span></span>
+        <span class="chip"><s>emerald</s><span class="v" id="stHeld">—</span></span>
+        <span class="chip"><s>rear</s><span class="v" id="stRear">—</span></span>
+        <span class="chip"><s>trapdoor</s><span class="v" id="stTrap">shut</span></span>
+      </div>
+    </div>
+  </footer>
+</div>
+<script>
+/* ============================================================================
+   THE BUYBACK COUNTER — a 20 second voxel rehearsal.
+   No libraries. No network. One canvas, one deterministic simulation.
+   ========================================================================== */
+(function () {
+'use strict';
+
+/* ---------------------------------------------------------------- constants */
+var T_MAX = 20;          // seconds
+var WIN_A = 4;           // input window opens
+var WIN_B = 12;          // input window closes, ending latches
+var TRAP_AT = 14;        // trapdoor opens (trap ending only)
+var DEF_ORIGIN = [0, 0, 0];
+
+/* ---------------------------------------------------------------- scalar math */
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function lerp(a, b, k) { return a + (b - a) * k; }
+function win(t, a, b) { var d = b - a; return clamp(d === 0 ? (t >= b ? 1 : 0) : (t - a) / d, 0, 1); }
+function ss(t, a, b) { var x = win(t, a, b); return x * x * (3 - 2 * x); }
+function ssi(t, a, b) { var x = win(t, a, b); return 1 - (1 - x) * (1 - x) * (1 - x); }
+function bell(t, a, b) { return Math.sin(Math.PI * win(t, a, b)); }
+// ramp up over fi, hold, down over fo  (defaults are gentle)
+function ramp(t, a, b, fi, fo) {
+  fi = fi === undefined ? 0.18 : fi; fo = fo === undefined ? 0.18 : fo;
+  var u = ss(t, a, a + fi);
+  var v = 1 - ss(t, b - fo, b);
+  return Math.min(u, v);
+}
+function pinch(t, a, b) { return ss(t, a, b); }
+function pulse(t, a, b, hold) {
+  // 0 -> 1 quickly at a, stay until b, back down
+  var up = ss(t, a, a + (hold || 0.12));
+  var dn = 1 - ss(t, b, b + (hold || 0.12));
+  return Math.min(up, dn);
+}
+function hash1(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+function hash2(a, b) { return hash1(a * 57.31 + b * 19.77 + 0.123); }
+function wob(t, f, ph) { return Math.sin(t * f + (ph || 0)); }
+function dampK(t, k) { return 1 - Math.exp(-t * k); }
+
+/* ---------------------------------------------------------------- vectors */
+function vadd(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+function vsub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+function vmul(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+function vlerp(a, b, k) { return [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)]; }
+function vlen(a) { return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]); }
+
+/* ---------------------------------------------------------------- colour */
+function hex(h) {
+  return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)];
+}
+function rgbStr(c, a) {
+  return a === undefined || a >= 1
+    ? 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')'
+    : 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + a.toFixed(3) + ')';
+}
+function mixc(a, b, k) { return [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)]; }
+function scalec(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+function brighten(c, k) { return [Math.min(255, c[0] + 255 * k), Math.min(255, c[1] + 255 * k), Math.min(255, c[2] + 255 * k)]; }
+
+/* ---------------------------------------------------------------- affine transforms
+   A transform is {m:[9] row-major 3x3, t:[3]}. Points: p' = m*p + t.
+   Used for actors and props; the same helpers are used by the simulation
+   (to find hand positions) and by the renderer (to build geometry), which is
+   how props and the emerald stay welded to hands. */
+var IDENT = { m: [1, 0, 0, 0, 1, 0, 0, 0, 1], t: [0, 0, 0] };
+function xfT(x, y, z) { return { m: IDENT.m.slice(), t: [x, y, z] }; }
+function xfMul(a, b) {
+  // returns a ∘ b  (apply b first, then a)
+  var am = a.m, bm = b.m, m = new Array(9), i, j;
+  for (i = 0; i < 3; i++) for (j = 0; j < 3; j++)
+    m[i * 3 + j] = am[i * 3] * bm[j] + am[i * 3 + 1] * bm[3 + j] + am[i * 3 + 2] * bm[6 + j];
+  var t = [
+    a.t[0] + am[0] * b.t[0] + am[1] * b.t[1] + am[2] * b.t[2],
+    a.t[1] + am[3] * b.t[0] + am[4] * b.t[1] + am[5] * b.t[2],
+    a.t[2] + am[6] * b.t[0] + am[7] * b.t[1] + am[8] * b.t[2]
+  ];
+  return { m: m, t: t };
+}
+function xfRotX(a) { var c = Math.cos(a), s = Math.sin(a); return { m: [1, 0, 0, 0, c, -s, 0, s, c], t: [0, 0, 0] }; }
+function xfRotY(a) { var c = Math.cos(a), s = Math.sin(a); return { m: [c, 0, s, 0, 1, 0, -s, 0, c], t: [0, 0, 0] }; }
+function xfRotZ(a) { var c = Math.cos(a), s = Math.sin(a); return { m: [c, -s, 0, s, c, 0, 0, 0, 1], t: [0, 0, 0] }; }
+function xfScale(x, y, z) { return { m: [x, 0, 0, 0, y, 0, 0, 0, z], t: [0, 0, 0] }; }
+function xfApply(x, p) {
+  var m = x.m, t = x.t;
+  return [m[0] * p[0] + m[1] * p[1] + m[2] * p[2] + t[0],
+          m[3] * p[0] + m[4] * p[1] + m[5] * p[2] + t[1],
+          m[6] * p[0] + m[7] * p[1] + m[8] * p[2] + t[2]];
+}
+
+/* ---------------------------------------------------------------- rig helpers
+   Pose objects carry their own skeleton metrics so the same maths serves the
+   merchant, the customer and every prop welded to a hand. */
+function poseXf(pose) {
+  var x = xfT(pose.x, pose.y, pose.z);
+  x = xfMul(x, xfRotY(pose.yaw));
+  if (pose.lean) {
+    var hy = pose.hipY;
+    x = xfMul(x, xfT(0, hy, 0));
+    x = xfMul(x, xfRotX(pose.lean));
+    x = xfMul(x, xfT(0, -hy, 0));
+  }
+  if (pose.twist) x = xfMul(x, xfRotY(pose.twist));
+  return x;
+}
+function shoulderXf(pose, side) {
+  var a = side === 'R' ? pose.armR : pose.armL;
+  // arm[1] = outward spread (positive = away from the body)
+  var zrot = (side === 'R' ? a[1] : -a[1]);
+  var root = xfMul(poseXf(pose), xfT(0, pose.shoulderY, 0));
+  root = xfMul(root, xfRotZ(zrot));
+  root = xfMul(root, xfRotX(a[0]));
+  return root;
+}
+function handPos(pose, side) {
+  return xfApply(shoulderXf(pose, side), [0, -pose.armLen, 0]);
+}
+
+
+/* ============================================================================
+   SIMULATION — one deterministic function of (time, inputs, origin).
+   Both the renderer and window.sceneBench.evaluate call simulate(); there is
+   no second, test-only code path.
+   ========================================================================== */
+
+var L = {
+  // the buyback counter runs front-to-back, with the merchant on its left
+  // and the customer on its right, both angled toward the camera.
+  ctr: { x0: 0.22, x1: 0.92, z0: -0.95, z1: 0.95, top: 1.02 },
+  merch: [-0.46, 0, 0.34],
+  merchYaw: 1.30,
+  cust: [1.80, 0, 0.92],
+  custYaw: -1.24,
+  mat: { cx: 1.80, cz: 1.20, w: 2.34, d: 2.34 },
+  hole: { x0: 0.80, z0: 0.20, x1: 2.80, z1: 2.20, depth: 2.35 },
+  lever: [0.24, 1.02, 0.94],
+  emHome: [0.55, 1.27, -0.40],
+  souvHome: [0.60, 1.06, 0.50],
+  junction: [0.96, 0.30, 1.06]
+};
+
+var BEAT = {
+  arrive: 2.35,
+  knock1: 1.98, knock2: 2.22,
+  cardUp: 2.36, cardDown: 6.30,
+  showSouv: 2.62, handSouv: 3.90, merchSet: 5.02,
+  emWake: 3.52,
+  grabMiss: 5.10,
+  nudgeLever: 6.55,
+  stomp: 8.92,
+  shush: 9.10,
+  swat: 10.22,
+  finalLean: 11.25
+};
+
+/* ---------------------------------------------------------------- inputs */
+function numOr(v, d) {
+  var n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
+  return isFinite(n) ? n : d;
+}
+function acceptActions(raw) {
+  var out = [];
+  if (!raw || typeof raw.length !== 'number') return out;
+  for (var i = 0; i < raw.length; i++) {
+    var a = raw[i];
+    if (!a || typeof a !== 'object') continue;
+    var tm = typeof a.time === 'number' ? a.time : NaN;
+    if (!isFinite(tm)) continue;
+    if (tm < WIN_A || tm >= WIN_B) continue;
+    if (a.type !== 'take' && a.type !== 'return' && a.type !== 'inspect') continue;
+    out.push({ time: tm, type: a.type, i: i });
+  }
+  out.sort(function (p, q) { return p.time - q.time || p.i - q.i; });
+  return out;
+}
+function readOrigin(raw) {
+  if (!raw || typeof raw.length !== 'number') return DEF_ORIGIN.slice();
+  return [numOr(raw[0], 0), numOr(raw[1], 0), numOr(raw[2], 0)];
+}
+
+/* ---------------------------------------------------------------- rig */
+function newPose(kind) {
+  var m = kind === 'm';
+  return {
+    kind: kind, x: 0, y: 0, z: 0, yaw: 0, lean: 0, twist: 0,
+    headYaw: 0, headPitch: 0, headRoll: 0,
+    armR: [-0.07, 0.05], armL: [-0.07, 0.05],
+    legL: 0, legR: 0,
+    hipY: m ? 1.00 : 0.76,
+    shoulderY: m ? 1.40 : 1.34,
+    shoulderX: m ? 0.44 : 0.335,
+    armLen: 0.60,
+    squash: 1, blink: 0, visible: 1, capOn: 1
+  };
+}
+function angLerp(a, b, k) {
+  var d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  return a + d * k;
+}
+
+/* ---------------------------------------------------------------- mechanism */
+function mechState(ctx) {
+  var t = ctx.t, br = ctx.branch, tau = ctx.tau;
+  var M = { rugLift: 0, rugFlip: 0, rugFly: 0, hatch: 0, jolt: 0, lever: 0, wire: 0, sparks: 0, signFlip: 0, mechanism: 0, dust: [] };
+  var d = M.dust;
+  function puff(t0, x, y, z, n, pw, c) { d.push({ t0: t0, x: x, y: y, z: z, n: n, pw: pw, c: c || 0 }); }
+
+  // ---- rug: tiny tugs during the warning, permanent removal on inspect
+  var tug1 = bell(t, 7.42, 7.80) * 0.06;
+  var tug2 = bell(t, 10.62, 10.98) * 0.045;
+  M.rugLift = Math.max(tug1, tug2);
+  if (tau !== null) {
+    var tu = t - tau;
+    M.mechanism = ss(tu, 0.88, 1.20);
+    M.rugFlip = ss(tu, 0.52, 0.92);
+    M.rugFly = ss(tu, 0.80, 1.55);
+    if (tu > 0.88 && tu < 1.6) M.rugLift = Math.max(M.rugLift, bell(tu, 0.52, 0.92) * 0.4);
+  }
+
+  // ---- lever
+  if (br === 'trap') {
+    M.lever = ss(t, 13.16, 13.42);
+  } else if (br === 'safe') {
+    var p1 = ss(t, 12.98, 13.18) * (1 - ss(t, 13.28, 13.5));
+    var p2 = ss(t, 13.62, 13.8) * (1 - ss(t, 13.86, 14.05));
+    M.lever = Math.max(p1, p2 * 1.06);
+    if (t >= 13.8) M.jolt = bell(t, 13.95, 14.2) * 0.012;
+  } else if (br === 'exposed') {
+    M.lever = ss(t, 13.9, 14.1) * 0.32 * (1 - ss(t, 14.4, 14.7));
+  }
+
+  // ---- hatch
+  if (br === 'trap') {
+    // the rug is whipped out from under his feet just before the floor gives
+    M.rugFly = ss(t, 13.70, 13.99);
+    M.rugLift = Math.max(M.rugLift, bell(t, 13.72, 14.0) * 0.12);
+    M.hatch = ss(t, TRAP_AT, TRAP_AT + 0.30);
+    if (t >= TRAP_AT && t < TRAP_AT + 0.05) puff(TRAP_AT, 1.80, 0.05, 1.20, 28, 1.6, 0);
+    if (t >= 15.0 && t < 15.04) puff(15.0, 1.80, 0.05, 1.20, 10, 0.5, 3);
+  } else if (br === 'safe') {
+    M.jolt = Math.max(M.jolt, bell(t, 13.98, 14.35) * 0.018);
+    if (t >= 13.99 && t < 14.04) puff(14.0, 1.80, 0.04, 1.20, 14, 0.8, 1);
+  }
+
+  M.wire = M.lever;
+  if (M.lever > 0.05) M.sparks = M.lever;
+
+  // ---- hanging sign swings to the dark side
+  if (br === 'exposed') M.signFlip = ss(t, 14.55, 14.95);
+  else if (br === 'safe') M.signFlip = 0.8 * ss(t, 16.6, 17.1);
+  else M.signFlip = 0.12 * ss(t, 15.2, 15.8);
+
+  // ---- event dust
+  if (t >= BEAT.knock1 && t < BEAT.knock1 + 0.04) puff(BEAT.knock1, 0.35, 1.06, 0.75, 7, 0.5, 0);
+  if (t >= BEAT.knock2 && t < BEAT.knock2 + 0.04) puff(BEAT.knock2, 0.45, 1.06, 0.55, 7, 0.5, 0);
+  if (t >= BEAT.handSouv && t < BEAT.handSouv + 0.04) puff(BEAT.handSouv, 0.80, 1.06, 0.55, 5, 0.35, 0);
+  if (t >= BEAT.stomp && t < BEAT.stomp + 0.04) puff(BEAT.stomp, -0.34, 0.05, 0.80, 10, 0.6, 0);
+  if (t >= 10.28 && t < 10.32) puff(10.28, 0.72, 0.28, 1.38, 8, 0.5, 2);
+  if (t >= 13.3 && t < 13.34 && br === 'trap') puff(13.3, 0.12, 1.20, 1.34, 6, 0.4, 2);
+  if (t >= 14.05 && t < 14.09 && br === 'exposed') puff(14.05, 1.80, 0.10, 1.20, 9, 0.6, 2);
+  return M;
+}
+
+/* ---------------------------------------------------------------- customer */
+function customerPose(ctx) {
+  var t = ctx.t, br = ctx.branch, tau = ctx.tau;
+  var P = newPose('c');
+  var home = L.cust;
+  P.x = home[0]; P.z = home[2]; P.yaw = L.custYaw;
+
+  /* -------- arrival walk */
+  var arrive = BEAT.arrive;
+  var walkAmp = 0, phase = 0;
+  if (t < arrive + 0.001) {
+    var k = ssi(t, 0.12, arrive);
+    var pts = [[3.98, 2.42], [3.25, 1.98], [2.45, 1.55], [home[0], home[2]]];
+    var s = k * (pts.length - 1);
+    var i = Math.min(pts.length - 2, Math.floor(s)), f = s - i;
+    var ax = pts[i][0], az = pts[i][1], bx = pts[i + 1][0], bz = pts[i + 1][1];
+    P.x = lerp(ax, bx, f); P.z = lerp(az, bz, f);
+    var segYaw = Math.atan2(bx - ax, bz - az);
+    var settle = ss(t, arrive - 0.55, arrive + 0.02);
+    P.yaw = angLerp(segYaw, L.custYaw, settle);
+    walkAmp = 1 - ss(t, arrive - 0.55, arrive);
+    phase = t * 8.4;
+    P.y = Math.abs(Math.sin(phase)) * 0.045 * walkAmp;
+  }
+  var la = 0.52 * walkAmp;
+  P.legL = Math.sin(phase) * la;
+  P.legR = -Math.sin(phase) * la;
+  P.armL[0] = -0.10 - Math.sin(phase) * 0.34 * walkAmp;
+  P.armR[0] = -0.10 + Math.sin(phase) * 0.34 * walkAmp;
+  P.armL[1] = 0.10; P.armR[1] = 0.10;
+
+  var idle = 1 - walkAmp;
+  P.headYaw = 0.30 * idle;
+  P.y += 0.012 * Math.sin(t * 2.1) * idle;
+  P.lean = 0.02 * Math.sin(t * 1.7 + 1.0) * idle;
+
+  /* -------- the deal, 2.3 - 4.3 */
+  var examine = ramp(t, 2.55, 3.90, 0.25, 0.2);
+  var placeStep = ss(t, 3.55, 3.88) * (1 - ss(t, 4.20, 4.60));
+  P.x -= 0.30 * placeStep; P.z -= 0.06 * placeStep;
+  P.armR[0] -= 1.35 * examine;
+  P.armR[1] += 0.05 * examine;
+  P.lean += 0.10 * examine + 0.18 * placeStep;
+  P.yaw = angLerp(P.yaw, -1.45, 0.45 * placeStep);
+  P.headPitch += 0.24 * examine;
+  P.headYaw += 0.10 * examine;
+
+  /* -------- warning reactions (suppressed while inspecting) */
+  var inspW = 0;
+  if (tau !== null) inspW = ss(t, tau + 0.1, tau + 0.35) * (1 - ss(t, tau + 1.55, tau + 2.0));
+
+  var lookEm = ramp(t, 4.30, 5.20, 0.16, 0.2) * (1 - inspW);
+  var peer = ramp(t, 5.05, 5.62, 0.2, 0.22) * (1 - inspW);
+  var shrug = ramp(t, 5.50, 6.12, 0.14, 0.16) * (1 - inspW);
+  var creak = ramp(t, 6.38, 6.88, 0.06, 0.34) * (1 - inspW);
+  var greed = ramp(t, 7.10, 8.60, 0.34, 0.38) * (1 - inspW);
+  var puff = ramp(t, 8.88, 9.36, 0.06, 0.4) * (1 - inspW);
+  var tapFoot = ramp(t, 9.40, 10.15, 0.2, 0.2) * (1 - inspW);
+  var bend = ramp(t, 9.90, 10.45, 0.24, 0.22) * (1 - inspW);
+  var skeptic = ramp(t, 10.42, 11.20, 0.2, 0.2) * (1 - inspW);
+  var reach = ramp(t, 11.25, 11.97, 0.3, 0.22) * (1 - inspW);
+
+  P.z += 0.10 * creak + 0.16 * puff - 0.10 * greed - 0.05 * lookEm;
+  P.x += 0.08 * lookEm - 0.06 * creak - 0.08 * greed;
+  P.y += 0.05 * puff - 0.05 * bend - 0.02 * peer;
+
+  P.headPitch += 0.42 * lookEm + 0.10 * peer + 0.52 * puff - 0.10 * greed + 0.30 * bend + 0.12 * tapFoot;
+  P.headYaw += 0.34 * lookEm + 0.16 * peer - 0.2 * greed;
+  P.headRoll += 0.10 * lookEm - 0.12 * shrug;
+  P.twist += 0.20 * lookEm + 0.10 * bend;
+
+  P.armR[0] -= 0.18 * lookEm;
+  P.armL[0] -= 0.30 * peer + 0.45 * bend;
+  P.armL[1] += 0.32 * shrug;
+  P.armR[1] += 0.30 * shrug;
+  P.armR[0] -= 0.95 * greed;
+  P.armR[1] -= 0.12 * greed;
+  P.lean += 0.14 * greed + 0.22 * bend + 0.10 * creak - 0.06 * puff;
+  P.legR += 0.30 * tapFoot * Math.max(0, Math.sin(t * 7.2));
+  P.armL[0] += 0.55 * bend; P.armR[0] += 0.55 * bend;
+  P.armR[0] -= 0.75 * reach;
+  P.lean += 0.06 * reach;
+  P.headYaw += 0.22 * reach;
+
+  /* -------- INSPECT REAR: spin, drop, peel the rug, turn back */
+  if (tau !== null) {
+    var tu = t - tau;
+    var turnAway = ss(tu, 0.02, 0.44);
+    var turnBack = ss(tu, 1.45, 2.02);
+    P.yaw += 2.94 * turnAway * (1 - turnBack);
+    var crouch = ss(tu, 0.46, 0.84) * (1 - ss(tu, 1.32, 1.64));
+    P.y -= 0.30 * crouch;
+    P.lean += 0.72 * crouch;
+    P.headPitch += 0.55 * ss(tu, 0.15, 0.5) * (1 - ss(tu, 1.35, 1.7));
+    P.armL[0] -= 0.95 * crouch; P.armR[0] -= 0.95 * crouch;
+    P.armL[1] += 0.20 * crouch; P.armR[1] += 0.20 * crouch;
+    var accuse = ss(tu, 1.95, 2.35);
+    P.armL[0] -= 1.35 * accuse * (1 - ss(tu, 3.6, 4.2));
+    P.armL[1] += 0.25 * accuse;
+    P.headPitch += 0.18 * accuse;
+  }
+
+  /* -------- ENDINGS */
+  if (br === 'trap') {
+    // reaches for his payment, takes one fatal step toward the counter
+    var ea = ramp(t, 12.15, 13.35, 0.4, 0.18);
+    P.armR[0] -= 1.15 * ea; P.armR[1] -= 0.18 * ea;
+    P.lean += 0.16 * ea; P.headPitch += 0.10 * ea;
+    var step = ss(t, 13.30, 13.90);
+    P.x -= 0.26 * step; P.z -= 0.10 * step;
+    P.lean += 0.10 * step;
+    // the fall
+    var fall = ss(t, 13.99, 14.30);
+    P.y = P.y - 2.10 * fall * fall;
+    P.lean = lerp(P.lean, -0.22, fall);
+    P.armL[0] = lerp(P.armL[0], -2.5, fall); P.armR[0] = lerp(P.armR[0], -2.4, fall);
+    P.armL[1] += 0.5 * fall; P.armR[1] += 0.5 * fall;
+    P.legL = 0.5 * fall * Math.sin(t * 20); P.legR = -0.5 * fall * Math.sin(t * 20 + 2);
+    P.yaw += 0.35 * fall;
+    if (fall > 0.6) P.capOn = 0;
+    if (t > 15.05) { P.headPitch = 0.45; P.lean = 0.2; P.armL[0] = -1.5; P.armR[0] = -1.4; P.y = -2.10; }
+  } else if (br === 'safe') {
+    var lookHeld = ramp(t, 12.0, 12.55, 0.2, 0.2);
+    P.headPitch += 0.45 * lookHeld; P.armR[0] -= 0.35 * lookHeld;
+    // two clear steps back, off the hatch
+    var backA = ss(t, 12.60, 13.05), backB = ss(t, 13.10, 13.58);
+    P.x += 0.78 * backA + 0.74 * backB;
+    P.z += 0.46 * backA + 0.42 * backB;
+    P.legL = -0.4 * bell(t, 12.55, 13.0) - 0.4 * bell(t, 13.05, 13.5);
+    P.legR = 0.4 * bell(t, 12.55, 13.0) + 0.4 * bell(t, 13.05, 13.5);
+    P.yaw = angLerp(P.yaw, -0.55, 0.55 * ss(t, 12.6, 13.6));
+    // the floor strains; he flinches
+    var flinch = ramp(t, 13.92, 14.5, 0.1, 0.3);
+    P.y += 0.06 * flinch; P.lean -= 0.12 * flinch;
+    // the emerald rises: he watches it, hand up
+    var rise = ramp(t, 14.5, 15.6, 0.4, 0.2);
+    P.headPitch -= 0.42 * rise;
+    P.armR[0] -= 0.55 * rise;
+    // turns and walks out to the right, looks back at the end
+    var leaveK = ss(t, 16.45, 18.20);
+    P.x += 1.25 * leaveK; P.z += 0.72 * leaveK;
+    var walkOut = 1 - ss(t, 18.15, 18.55);
+    P.yaw = angLerp(P.yaw, 0.95, ss(t, 16.3, 16.9) * (1 - ss(t, 18.35, 18.95)));
+    if (t > 18.35) P.yaw = angLerp(P.yaw, 3.05, ss(t, 18.4, 18.95));
+    var ph2 = t * 8.0;
+    P.legL = Math.sin(ph2) * 0.42 * walkOut; P.legR = -Math.sin(ph2) * 0.42 * walkOut;
+    P.y += Math.abs(Math.sin(ph2)) * 0.03 * walkOut;
+    P.armL[0] += Math.sin(ph2) * 0.3 * walkOut;
+  } else if (br === 'exposed') {
+    var point = ramp(t, 12.0, 12.35, 0.2, 0.2);
+    P.armL[0] -= 1.2 * point;
+    P.headPitch += 0.28 * point;
+    // lunges over the counter, snatches his souvenir back
+    var lunge = ramp(t, 12.85, 13.55, 0.35, 0.2);
+    P.x -= 0.62 * lunge; P.z -= 0.10 * lunge;
+    P.lean += 0.34 * lunge;
+    P.armR[0] -= 1.25 * lunge;
+    var snatch = ramp(t, 13.35, 14.05, 0.3, 0.2);
+    P.armR[0] -= 0.4 * snatch;
+    // turns and walks out
+    var leaveE = ss(t, 14.35, 16.55);
+    P.x += 2.35 * leaveE; P.z += 0.95 * leaveE;
+    P.yaw = angLerp(P.yaw, 1.0, ss(t, 14.2, 14.9));
+    var ph3 = t * 7.8;
+    P.legL = Math.sin(ph3) * 0.42 * (1 - ss(t, 16.55, 16.95));
+    P.legR = -Math.sin(ph3) * 0.42 * (1 - ss(t, 16.55, 16.95));
+    P.y += Math.abs(Math.sin(ph3)) * 0.03 * (1 - ss(t, 16.55, 16.95));
+    P.armL[0] += Math.sin(ph3) * 0.28;
+    if (t > 16.8) P.yaw = angLerp(P.yaw, 3.05, ss(t, 16.8, 17.4));
+  }
+
+  /* -------- held emerald: the hand comes up, he keeps glancing at it */
+  if (ctx.held || (ctx.lastChangeT !== null && ctx.prevHeld && t < ctx.lastChangeT + 0.4)) {
+    var hold = ss(t, ctx.lastChangeT === null ? -1 : ctx.lastChangeT, (ctx.lastChangeT === null ? -1 : ctx.lastChangeT) + 0.34);
+    if (!ctx.held) hold *= 1 - ss(t, ctx.lastChangeT, ctx.lastChangeT + 0.34);
+    P.armR[0] -= 1.15 * hold;
+    P.armR[1] += 0.16 * hold;
+    P.headPitch += 0.22 * hold;
+    P.headYaw += 0.12 * hold;
+  }
+  return P;
+}
+
+/* ---------------------------------------------------------------- merchant */
+function merchantPose(ctx) {
+  var t = ctx.t, br = ctx.branch;
+  var M = newPose('m');
+  M.x = L.merch[0]; M.z = L.merch[2]; M.yaw = L.merchYaw;
+  M.y += 0.012 * Math.sin(t * 1.9);
+
+  /* -------- 0 - 4: work the counter */
+  var dust = ramp(t, 0.10, 1.02, 0.2, 0.25);
+  M.armR[0] -= 1.05 * dust + 0.12 * Math.sin(t * 9) * dust;
+  M.armR[1] += 0.30 * dust + 0.08 * Math.cos(t * 9) * dust;
+  M.lean += 0.12 * dust;
+  M.headPitch += 0.16 * dust;
+  M.headYaw += 0.18 * Math.sin(t * 2.3) * dust;
+
+  var greet = ramp(t, 1.02, 1.85, 0.22, 0.2);
+  M.armL[0] -= 0.75 * greet; M.armL[1] += 0.72 * greet;
+  M.lean -= 0.05 * greet;
+  M.headPitch -= 0.10 * greet;
+
+  var knocks = Math.min(1, bell(t, 1.94, 2.04) + bell(t, 2.18, 2.28));
+  M.armR[0] = M.armR[0] * (1 - knocks) - 1.62 * knocks;
+  M.armR[1] += 0.10 * knocks;
+  M.lean += 0.10 * knocks;
+  M.y += 0.03 * knocks;
+
+  var card = ramp(t, 2.36, 6.30, 0.22, 0.2);
+  M.armL[0] -= 1.55 * card; M.armL[1] += 0.34 * card;
+  M.armL[0] += 0.22 * Math.sin(t * 3.1) * card * (1 - ss(t, 2.9, 3.3));
+  M.armL[0] += 0.30 * Math.sin(t * 4.8) * ramp(t, 5.7, 6.3, 0.2, 0.2);
+  M.armL[1] += 0.22 * Math.sin(t * 4.8) * ramp(t, 5.7, 6.3, 0.2, 0.2);
+
+  var examine = ramp(t, 2.72, 3.86, 0.24, 0.2);
+  var takeSouv = ramp(t, 3.86, 4.48, 0.22, 0.16);
+  var holdUp = ramp(t, 4.22, 5.02, 0.24, 0.2);
+  M.armR[0] -= 1.50 * examine + 1.30 * takeSouv;
+  M.armR[0] += 0.55 * holdUp;
+  M.lean += 0.22 * examine + 0.10 * takeSouv - 0.12 * holdUp;
+  M.headPitch += 0.22 * examine - 0.18 * holdUp;
+  M.headYaw += 0.12 * examine;
+  // steps down the counter to take delivery, then back
+  M.z += 0.26 * ss(t, 3.60, 3.95) * (1 - ss(t, 4.60, 5.00));
+  M.x += 0.10 * ss(t, 3.60, 3.95) * (1 - ss(t, 4.60, 5.00));
+
+  /* -------- 4 - 12: manage the emerald, keep the customer sweet */
+  var grab = ramp(t, 5.05, 5.42, 0.1, 0.18);
+  M.armL[0] += 0.55 * grab; M.armL[1] -= 0.55 * grab;
+  M.lean += 0.22 * grab; M.headPitch += 0.28 * grab;
+  M.headYaw += 0.30 * grab;
+
+  var wave = ramp(t, 5.62, 6.28, 0.18, 0.18);
+  M.armL[0] -= 1.75 * wave; M.armL[1] += 0.30 * wave + 0.25 * Math.sin(t * 5.2) * wave;
+  M.headYaw -= 0.16 * wave;
+
+  // sidestep toward the lever, nudge it, freeze
+  var nudge = ramp(t, 6.48, 7.08, 0.28, 0.2);
+  M.z += 0.34 * ss(t, 6.42, 6.78) * (1 - ss(t, 7.12, 7.55));
+  M.x += 0.10 * ss(t, 6.42, 6.78) * (1 - ss(t, 7.12, 7.55));
+  M.armL[0] -= 1.20 * nudge; M.armL[1] += 0.72 * nudge;
+  M.lean += 0.30 * nudge; M.headPitch += 0.30 * nudge;
+  var innocent = ramp(t, 6.95, 7.5, 0.12, 0.16);
+  M.lean -= 0.24 * innocent; M.headPitch -= 0.22 * innocent;
+  M.armL[1] += 0.5 * innocent;
+  M.headYaw += 0.25 * innocent;
+
+  var pitch2 = ramp(t, 7.05, 8.55, 0.26, 0.24);
+  M.armL[0] -= 0.55 * pitch2; M.armL[1] += 0.45 * pitch2 + 0.14 * Math.sin(t * 6.0) * pitch2;
+  M.lean += 0.12 * pitch2; M.headYaw -= 0.10 * pitch2;
+  M.armR[0] -= 0.75 * pitch2; M.armR[1] += 0.25 * pitch2;
+
+  var stomp = bell(t, 8.86, 9.05);
+  M.y -= 0.07 * stomp; M.lean += 0.16 * stomp; M.headPitch += 0.2 * stomp;
+
+  var shush = ramp(t, 9.02, 9.72, 0.16, 0.2);
+  M.lean += 0.30 * shush; M.armR[0] -= 2.05 * shush; M.armR[1] -= 0.30 * shush;
+  M.headYaw += 0.32 * shush; M.headPitch += 0.12 * shush;
+  M.headRoll += 0.1 * shush;
+
+  var swat = bell(t, 10.18, 10.48);
+  M.armR[0] -= 1.1 * swat; M.armR[1] += 0.6 * swat;
+  M.lean += 0.12 * swat;
+  var tidy = ramp(t, 10.5, 11.25, 0.24, 0.2);
+  M.lean -= 0.08 * tidy; M.armR[0] += 0.4 * tidy; M.armR[1] -= 0.24 * tidy;
+  M.headPitch += 0.1 * tidy; M.headYaw += 0.2 * Math.sin(t * 3.0) * tidy;
+
+  var lure = ramp(t, 11.2, 12.0, 0.35, 0.1);
+  M.armR[0] -= 1.25 * lure; M.armR[1] -= 0.1 * lure;
+  M.lean += 0.18 * lure; M.headYaw += 0.14 * lure; M.headPitch += 0.08 * lure;
+
+  /* -------- ENDINGS */
+  var sidestep = 0;
+  if (br === 'trap') {
+    sidestep = ss(t, 12.32, 13.05) * (1 - ss(t, 14.9, 15.5));
+    M.armL[0] -= 1.45 * ramp(t, 12.5, 13.5, 0.35, 0.06);
+    M.armL[1] += 0.85 * ramp(t, 12.5, 13.5, 0.35, 0.06);
+    M.lean += 0.22 * ss(t, 12.5, 13.2);
+    M.headPitch += 0.25 * ramp(t, 12.6, 13.5, 0.3, 0.1);
+    var shock = bell(t, 14.02, 14.7);
+    M.lean -= 0.42 * shock; M.y += 0.05 * shock;
+    M.armR[0] -= 2.1 * shock; M.armL[0] -= 1.9 * shock;
+    M.armR[1] += 0.55 * shock; M.armL[1] += 0.55 * shock;
+    M.headPitch -= 0.25 * shock;
+    var gloat = ramp(t, 14.85, 15.9, 0.4, 0.3);
+    M.lean += 0.55 * gloat; M.headPitch += 0.55 * gloat;
+    M.armR[0] -= 0.9 * gloat; M.armL[0] -= 0.7 * gloat;
+    var smug = ramp(t, 16.0, 17.2, 0.4, 0.3);
+    M.lean -= 0.1 * smug;
+    M.armR[0] -= 0.5 * smug; M.armL[0] -= 0.3 * smug;
+    var pocket = ramp(t, 17.1, 18.1, 0.3, 0.2);
+    M.armR[0] -= 1.15 * pocket; M.lean += 0.12 * pocket; M.headPitch += 0.2 * pocket;
+    var tip = ramp(t, 18.5, 19.2, 0.35, 0.3);
+    M.armR[0] -= 2.35 * tip; M.armR[1] += 0.15 * tip;
+    M.headPitch -= 0.12 * tip; M.headRoll += 0.12 * tip;
+    M.headYaw -= 0.1 * tip;
+  } else if (br === 'safe') {
+    sidestep = ss(t, 12.5, 13.1) * (1 - ss(t, 14.4, 14.9));
+    M.armL[0] -= 1.45 * ramp(t, 12.65, 13.6, 0.3, 0.05);
+    M.armL[1] += 0.85 * ramp(t, 12.65, 13.6, 0.3, 0.05);
+    M.armL[0] -= 0.35 * bell(t, 13.45, 13.95);
+    var force = ramp(t, 13.6, 14.15, 0.2, 0.14);
+    M.lean += 0.28 * force; M.y -= 0.05 * force; M.headPitch += 0.3 * force;
+    var jam = bell(t, 14.12, 14.55);
+    M.lean -= 0.5 * jam; M.armL[0] += 0.9 * jam; M.armR[1] += 0.4 * jam;
+    M.headPitch -= 0.3 * jam;
+    var stare = ramp(t, 14.6, 15.9, 0.4, 0.3);
+    M.lean += 0.5 * stare; M.headPitch += 0.5 * stare;
+    M.armR[0] -= 1.0 * stare; M.armL[0] -= 0.9 * stare;
+    var cower = ramp(t, 15.9, 16.8, 0.35, 0.3);
+    M.lean -= 0.35 * cower; M.headPitch -= 0.2 * cower;
+    M.armR[0] -= 2.2 * cower; M.armL[0] -= 2.1 * cower;
+    M.armR[1] += 0.5 * cower; M.armL[1] += 0.5 * cower;
+    var giveBack = ramp(t, 15.35, 16.25, 0.25, 0.2);
+    M.armR[0] -= 1.3 * giveBack; M.lean += 0.25 * giveBack;
+    M.headPitch += 0.25 * giveBack;
+    var slump = ramp(t, 16.9, 18.3, 0.6, 0.4);
+    M.y -= 0.16 * slump; M.lean += 0.52 * slump; M.headPitch += 0.45 * slump;
+    M.armL[0] -= 0.85 * slump; M.armR[0] -= 0.8 * slump;
+    M.armL[1] += 0.35 * slump;
+    var waveBye = ramp(t, 18.4, 19.4, 0.3, 0.3);
+    M.armR[0] -= 1.5 * waveBye;
+    M.armR[1] += 0.45 * waveBye + 0.22 * Math.sin(t * 7) * waveBye;
+  } else if (br === 'exposed') {
+    var caught = ramp(t, 12.0, 12.7, 0.16, 0.2);
+    M.armR[0] -= 2.25 * caught; M.armL[0] -= 2.2 * caught;
+    M.armR[1] += 0.45 * caught; M.armL[1] += 0.45 * caught;
+    M.lean -= 0.3 * caught; M.headPitch -= 0.15 * caught;
+    // dives on the counter to hide the evidence
+    var dive = ramp(t, 12.95, 13.9, 0.4, 0.2);
+    M.lean += 1.05 * dive; M.y += 0.30 * dive; M.x += 0.22 * dive;
+    M.armR[0] -= 1.0 * dive; M.armL[0] -= 1.0 * dive;
+    M.armR[1] += 0.35 * dive; M.armL[1] += 0.35 * dive;
+    M.headPitch += 0.35 * dive;
+    var burn = bell(t, 14.05, 14.5);
+    M.armR[0] -= 0.6 * burn; M.armR[1] += 0.5 * burn; M.lean -= 0.2 * burn;
+    // hauls at the sign, gives up, sinks behind the counter
+    var haul = ramp(t, 15.0, 15.5, 0.25, 0.05);
+    M.armR[0] -= 2.5 * haul; M.armL[0] -= 2.4 * haul;
+    M.y += 0.06 * haul; M.lean -= 0.2 * haul;
+    var duck = ss(t, 16.0, 16.45);
+    M.y -= 0.52 * duck; M.lean += 0.25 * duck; M.headPitch += 0.2 * duck;
+    M.armR[0] += 1.2 * duck; M.armL[0] += 1.2 * duck;
+    var peek = bell(t, 17.1, 17.9);
+    M.y += 0.24 * peek; M.headPitch -= 0.1 * peek;
+    var duck2 = bell(t, 18.5, 19.4);
+    M.y -= 0.14 * duck2;
+  }
+  if (sidestep) {
+    M.z += 0.40 * sidestep;
+    M.x += 0.12 * sidestep;
+    M.yaw -= 0.30 * sidestep;
+  }
+  return M;
+}
+
+
+/* ---------------------------------------------------------------- emerald */
+/* Its scripted performance. When held it is welded to the customer's hand. */
+var EM_TRACK = [
+  [0.00, 0.40, 1.27, 0.20, 0.00],
+  [3.50, 0.40, 1.27, 0.20, 0.00],
+  [3.62, 0.40, 1.41, 0.17, 0.05],
+  [3.98, 0.42, 1.44, 0.12, 0.00],
+  [4.12, 0.52, 1.36, 0.02, 0.02],
+  [4.34, 1.28, 0.30, 1.72, 0.62],
+  [4.56, 1.28, 0.25, 1.72, 0.02],
+  [4.74, 1.22, 0.44, 1.78, 0.13],
+  [4.90, 1.18, 0.25, 1.80, 0.02],
+  [5.06, 1.26, 0.47, 1.55, 0.15],
+  [5.20, 1.32, 0.24, 1.42, 0.02],
+  [5.40, 1.50, 0.26, 1.25, 0.03],
+  [5.62, 1.50, 0.29, 1.22, 0.02],
+  [5.86, 0.62, 1.16, 0.98, 0.55],
+  [6.08, 0.40, 1.35, 0.20, 0.02],
+  [6.34, 0.40, 1.36, 0.20, 0.02],
+  [6.58, 0.40, 1.56, 0.20, 0.10],
+  [6.96, 0.40, 1.51, 0.20, 0.02],
+  [7.16, 2.60, 1.06, 1.78, 0.42],
+  [7.44, 2.72, 0.24, 2.06, 0.16],
+  [7.66, 2.74, 0.26, 2.08, 0.02],
+  [7.96, 2.05, 0.86, 1.30, 0.30],
+  [8.20, 1.78, 0.24, 1.52, 0.10],
+  [8.44, 2.00, 1.56, 1.18, 0.42],
+  [8.62, 2.00, 1.60, 1.18, 0.02],
+  [8.82, 1.60, 0.30, 1.92, 0.35],
+  [9.02, 2.30, 0.96, 2.02, 0.35],
+  [9.26, 2.05, 0.36, 1.86, 0.10],
+  [9.46, 1.86, 1.16, 1.42, 0.26],
+  [9.64, 1.72, 0.42, 1.50, 0.12],
+  [9.86, 0.72, 0.30, 1.38, 0.22],
+  [10.10, 0.72, 0.30, 1.38, 0.02],
+  [10.30, 0.68, 0.40, 1.30, 0.06],
+  [10.56, 0.56, 1.18, 0.88, 0.46],
+  [10.82, 0.50, 1.40, 0.62, 0.02],
+  [11.12, 0.72, 1.66, 0.94, 0.26],
+  [11.46, 0.70, 1.70, 0.97, 0.02],
+  [11.92, 0.70, 1.62, 0.97, 0.00]
+];
+var EM_TRAP = [
+  [11.92, 0.70, 1.62, 0.97, 0.00],
+  [12.42, 0.45, 1.46, 0.22, 0.00],
+  [13.90, 0.42, 1.43, 0.10, 0.00],
+  [14.08, 0.38, 1.64, -0.05, 0.20],
+  [14.52, 0.42, 1.56, -0.08, 0.00],
+  [15.05, 0.44, 1.38, -0.06, 0.00],
+  [19.10, 0.44, 1.36, -0.06, 0.00],
+  [19.40, 0.44, 1.43, -0.08, 0.02],
+  [20.00, 0.44, 1.41, -0.08, 0.00]
+];
+var EM_EXPOSED = [
+  [11.92, 0.70, 1.62, 0.97, 0.00],
+  [12.30, 0.48, 1.50, 0.26, 0.00],
+  [12.72, 1.78, 0.32, 1.30, 0.30],
+  [13.20, 1.82, 0.36, 1.36, 0.02],
+  [14.62, 1.12, 1.16, 0.86, 0.40],
+  [15.20, 1.06, 1.21, 0.82, 0.02],
+  [16.60, 1.06, 1.22, 0.82, 0.02],
+  [19.20, 1.06, 1.31, 0.82, 0.04],
+  [20.00, 1.06, 1.29, 0.82, 0.00]
+];
+function sampleTrack(t, keys) {
+  if (t <= keys[0][0]) return [keys[0][1], keys[0][2], keys[0][3]];
+  var n = keys.length;
+  if (t >= keys[n - 1][0]) return [keys[n - 1][1], keys[n - 1][2], keys[n - 1][3]];
+  for (var i = 0; i < n - 1; i++) {
+    var a = keys[i], b = keys[i + 1];
+    if (t >= a[0] && t <= b[0]) {
+      var k = win(t, a[0], b[0]);
+      k = k * k * (3 - 2 * k);
+      var arc = (a[4] || 0) * Math.sin(Math.PI * k);
+      return [lerp(a[1], b[1], k), lerp(a[2], b[2], k) + arc, lerp(a[3], b[3], k)];
+    }
+  }
+  return [keys[n - 1][1], keys[n - 1][2], keys[n - 1][3]];
+}
+function emScript(t, br) {
+  if (br === 'trap') return sampleTrack(t, EM_TRAP);
+  if (br === 'exposed') return sampleTrack(t, EM_EXPOSED);
+  return sampleTrack(t, EM_TRACK);
+}
+
+/* the emerald's personality as a function of (t, state) */
+function emeraldState(ctx, cust) {
+  var t = ctx.t, br = ctx.branch;
+  var em = {
+    pos: [0, 0, 0], yaw: 0, tilt: 0, tiltZ: 0, scaleX: 1, scaleY: 1, scaleZ: 1,
+    glow: 0.4, eyes: 1, glyph: 0, mood: 0, held: ctx.held, aim: 0
+  };
+
+  var scriptNow = emScript(t, br);
+  var handNow = null;
+  if (ctx.held) {
+    var hp = handPos(cust, 'R');
+    // held out in front of the palm
+    handNow = [hp[0] - 0.04, hp[1] + 0.15, hp[2] + 0.04];
+    if (br === 'safe') handNow[1] += 0.50 * ss(t, 14.45, 15.25);
+  }
+  var target = ctx.held ? handNow : scriptNow;
+
+  if (ctx.lastChangeT === null) {
+    em.pos = target.slice();
+  } else {
+    var tau = ctx.lastChangeT;
+    var from;
+    if (ctx.prevHeld) {
+      var ctxP = shallowCtx(ctx, tau);
+      ctxP.held = true; ctxP.lastChangeT = tau - 0.5; ctxP.prevHeld = false;
+      var pp = customerPose(ctxP);
+      var hp2 = handPos(pp, 'R');
+      from = [hp2[0] - 0.04, hp2[1] + 0.15, hp2[2] + 0.04];
+    } else {
+      from = emScript(tau, ctx.branch);
+    }
+    var k = ss(t, tau, tau + 0.34);
+    em.pos = [lerp(from[0], target[0], k),
+              lerp(from[1], target[1], k) + Math.sin(Math.PI * k) * 0.22,
+              lerp(from[2], target[2], k)];
+  }
+
+  // ---- attitude
+  var alarm = 0;
+  var lookBack = ramp(t, 3.95, 11.9, 0.2, 0.1);
+  var emph = 0;
+  emph += bell(t, 4.20, 4.70);
+  emph += bell(t, 5.60, 6.10);
+  emph += bell(t, 7.25, 7.60);
+  emph += bell(t, 7.90, 8.55);
+  emph += bell(t, 9.90, 10.35);
+  emph += bell(t, 11.20, 11.85);
+  alarm = clamp(emph, 0, 1);
+  em.glyph = Math.max(bell(t, 3.96, 4.34), bell(t, 5.66, 6.03), bell(t, 10.36, 10.72));
+  em.glow = 0.45 + 0.35 * alarm + 0.2 * bell(t, 3.6, 4.1);
+  em.tilt = -0.55 * lookBack * (0.55 + 0.35 * alarm);
+  em.tiltZ = 0.22 * Math.sin(t * 2.4);
+  em.yaw = t * 0.65;
+  var sq = 0;
+  sq += 0.35 * bell(t, 4.34, 4.52) + 0.3 * bell(t, 4.56, 4.78) + 0.3 * bell(t, 4.74, 4.92);
+  sq += 0.3 * bell(t, 9.44, 9.58);
+  em.scaleY = 1 + 0.28 * alarm - 0.22 * sq;
+  em.scaleX = 1 - 0.14 * alarm + 0.14 * sq;
+  em.scaleZ = em.scaleX;
+  var no = bell(t, 11.32, 11.86);
+  em.tiltZ += 0.55 * Math.sin(t * 26) * no;
+  em.yaw = t * 0.65 + 1.5 * no * Math.sin(t * 18);
+
+  // held: wriggle, struggling to point down
+  if (ctx.held) {
+    var hold = ss(t, ctx.lastChangeT === null ? -1 : ctx.lastChangeT, (ctx.lastChangeT === null ? -1 : ctx.lastChangeT) + 0.4);
+    em.pos[0] += 0.035 * Math.sin(t * 9.1) * hold;
+    em.pos[1] += 0.05 * Math.sin(t * 11.3 + 1) * hold;
+    em.tilt = -0.75 - 0.3 * Math.sin(t * 3.1) * hold;
+    em.tiltZ = 0.3 * Math.sin(t * 7.2) * hold;
+    em.glow = 0.6 + 0.25 * Math.sin(t * 5.1) + 0.2 * alarm;
+    em.eyes = 1;
+  }
+
+  // ---- blink / squint
+  var blinks = [1.3, 4.95, 6.2, 8.15, 10.05, 12.6, 15.2, 18.2];
+  var open = 1;
+  for (var i = 0; i < blinks.length; i++) open = Math.min(open, 1 - 0.92 * bell(t, blinks[i], blinks[i] + 0.11));
+  em.eyes = open;
+
+  // ---- endings
+  if (br === 'trap') {
+    var horror = bell(t, 14.0, 15.0);
+    em.glow = 0.5 + 0.3 * horror;
+    em.glyph = Math.max(em.glyph, bell(t, 14.02, 14.5));
+    var sad = ss(t, 15.2, 15.9);
+    em.tilt = -0.15 * sad + 0.25 * Math.sin(t * 1.2) * sad;
+    em.scaleY = 1 - 0.14 * sad;
+    em.scaleX = 1 + 0.1 * sad;
+    em.glow = lerp(em.glow, 0.25, sad);
+    em.eyes = lerp(1, 0.35, sad);
+    var hmph = ss(t, 19.15, 19.5);
+    em.yaw += 1.9 * hmph;
+    em.tiltZ += 0.35 * hmph;
+  } else if (br === 'safe') {
+    var flare = ramp(t, 12.05, 13.0, 0.3, 0.2);
+    em.glow = 0.7 + 0.3 * flare + 0.1 * Math.sin(t * 4.0);
+    em.tilt = -0.9 * flare;
+    var burst = bell(t, 14.55, 15.7);
+    em.scaleY = 1 + 0.25 * burst;
+    em.scaleX = 1 + 0.15 * burst;
+    em.glow = 0.75 + 0.3 * burst;
+    var proud = ss(t, 16.4, 17.4);
+    em.tilt = -0.55 - 0.35 * proud;
+    em.scaleY = 1 + 0.06 * Math.sin(t * 2.2) * proud;
+    em.eyes = 1;
+    em.glow = 0.8;
+  } else if (br === 'exposed') {
+    var flat = ss(t, 12.0, 12.6);
+    em.glow = 0.8 * flat + 0.15;
+    var scold = 0;
+    if (!ctx.held) {
+      em.tilt = -1.1 * flat;
+      em.tiltZ = 0.3 * Math.sin(t * 4.2) * flat;
+      scold = clamp(bell(t, 13.4, 14.2) + bell(t, 16.4, 17.2) + bell(t, 18.4, 19.2), 0, 1);
+      em.glyph = Math.max(em.glyph, scold);
+      em.scaleY = 1 + 0.18 * scold;
+    } else {
+      em.tilt = -0.8;
+      em.tiltZ = 0.3 * Math.sin(t * 8) * flat;
+    }
+    em.eyes = 1;
+  }
+  return em;
+}
+function shallowCtx(ctx, t) {
+  var c = {};
+  for (var k in ctx) if (Object.prototype.hasOwnProperty.call(ctx, k)) c[k] = ctx[k];
+  c.t = t;
+  return c;
+}
+
+/* ---------------------------------------------------------------- props */
+function propState(ctx, cust, merch) {
+  var t = ctx.t, br = ctx.branch;
+  var pr = {
+    souv: { on: 1, pos: L.souvHome.slice(), rot: 0, holder: 'counter' },
+    card: { on: 0, pos: [0, 0, 0], rot: 0, holder: 'none' },
+    hat: { on: 0, pos: [0, 0, 0], rot: 0, rotZ: 0 },
+    ward: 0, ringR: 0, ringA: 0
+  };
+  // ---- souvenir
+  var inCustHand = t < 4.02;
+  var inMerchHand = (t >= 4.02 && t < 5.02);
+  if (br === 'trap') {
+    if (t >= 17.05 && t < 18.05) inMerchHand = true;
+    if (t >= 18.05) pr.souv.on = 0;
+  } else if (br === 'exposed') {
+    if (t >= 13.35) inCustHand = true;
+  }
+  if (inCustHand) {
+    var hp = handPos(cust, 'R');
+    pr.souv.pos = [hp[0], hp[1] + 0.02, hp[2]];
+    pr.souv.rot = t * 0.4;
+    pr.souv.holder = 'cust';
+  } else if (inMerchHand) {
+    var mp = handPos(merch, 'R');
+    pr.souv.pos = [mp[0], mp[1] + 0.02, mp[2]];
+    pr.souv.rot = t * 1.4;
+    pr.souv.holder = 'merch';
+  } else {
+    var place = [0.66, 1.06, 1.02];
+    pr.souv.pos = vlerp(place, L.souvHome, ss(t, 5.02, 5.42));
+    pr.souv.rot = 0.1 * Math.sin(t * 0.9);
+    pr.souv.holder = 'counter';
+  }
+
+  // ---- price card
+  if (t >= 2.36) {
+    pr.card.on = 1;
+    if (t < 6.30) {
+      var hp2 = handPos(merch, 'L');
+      pr.card.pos = [hp2[0], hp2[1] + 0.16, hp2[2]];
+      pr.card.rot = 0.12 * Math.sin(t * 2.2);
+      pr.card.holder = 'merch';
+    } else {
+      var k = ss(t, 6.30, 6.55);
+      var tgt = [0.30, 1.075, -0.62];
+      var hp2b = handPos(merch, 'L');
+      pr.card.pos = [lerp(hp2b[0], tgt[0], k), lerp(hp2b[1] + 0.16, tgt[1], k), lerp(hp2b[2], tgt[2], k)];
+      pr.card.rot = -1.35 * k;
+      pr.card.holder = 'counter';
+    }
+  }
+
+  // ---- the fallen cap (trap ending)
+  if (br === 'trap' && t >= 14.42) {
+    pr.hat.on = 1;
+    var u = t - 14.42;
+    var vx = 1.05, vy = 4.2, vz = 0.75, g = 11.5;
+    var x = 1.72 + vx * u, y = 0.62 + vy * u - 0.5 * g * u * u, z = 1.12 + vz * u;
+    if (y < 0.13) y = 0.13 + Math.abs(Math.sin(u * 9)) * Math.exp(-u * 4) * 0.16;
+    pr.hat.pos = [x, y, z];
+    pr.hat.rot = u * 5.5;
+    pr.hat.rotZ = Math.sin(u * 7) * 0.4;
+  }
+
+  // ---- green ward (safe ending)
+  if (br === 'safe') {
+    pr.ward = ss(t, 12.3, 13.6);
+    pr.ringR = 0.15 + 2.2 * ss(t, 14.35, 16.4);
+    pr.ringA = 0.55 * (1 - ss(t, 15.6, 16.6));
+  }
+  return pr;
+}
+
+/* ---------------------------------------------------------------- camera */
+function cameraFor(ctx) {
+  var t = ctx.t, br = ctx.branch;
+  var cam = { az: 0.26, el: 0.58, dist: 12.3, target: [0.62, 1.06, 0.60], shake: 0 };
+  var latch = ramp(t, 11.15, 12.6, 0.9, 0.25);
+  cam.dist -= 0.25 * latch;
+  cam.el += 0.02 * latch;
+  if (br === 'trap') {
+    var open = ss(t, 13.95, 14.9);
+    cam.target[1] -= 0.34 * open; cam.target[2] += 0.26 * open;
+    cam.target[0] += 0.40 * open;
+    cam.dist += 0.75 * open;
+    cam.el += 0.10 * open;
+    cam.az -= 0.03 * open;
+    cam.shake = 0.05 * bell(t, 13.98, 14.5) + 0.012 * bell(t, 14.4, 14.6);
+    var leave = ss(t, 15.4, 18.5);
+    cam.target[2] += 0.10 * leave; cam.dist -= 0.1 * leave;
+  } else if (br === 'safe') {
+    cam.dist += 0.3 * ss(t, 12.2, 14.6);
+    cam.target[1] += 0.16 * ss(t, 14.4, 16.0);
+    cam.shake = 0.045 * bell(t, 14.0, 14.45);
+    var pan = ss(t, 16.3, 18.6);
+    cam.target[0] += 1.05 * pan; cam.target[2] += 0.35 * pan;
+    cam.dist += 0.85 * pan;
+    cam.az += 0.05 * pan;
+  } else if (br === 'exposed') {
+    cam.az -= 0.04 * ss(t, 12.0, 14.0);
+    cam.dist += 0.2 * ss(t, 12.0, 14.0);
+    var pan2 = ss(t, 14.6, 17.2);
+    cam.target[0] += 0.6 * pan2; cam.target[2] += 0.2 * pan2;
+    cam.dist += 0.6 * pan2;
+    cam.shake = 0.02 * bell(t, 15.44, 15.72);
+  }
+  cam.target[0] += 0.16 * ss(t, 12.0, 14.0);
+  return cam;
+}
+
+/* ---------------------------------------------------------------- simulate */
+function simulate(tRaw, actionsRaw, originRaw) {
+  var t = clamp(numOr(tRaw, 0), 0, T_MAX);
+  var acts = acceptActions(actionsRaw);
+  var origin = readOrigin(originRaw);
+
+  var held = false, inspected = false, lastChangeT = null, prevHeld = false, tau = null;
+  for (var i = 0; i < acts.length; i++) {
+    var a = acts[i];
+    if (a.time > t) break;
+    if (a.type === 'take') { if (!held) { held = true; lastChangeT = a.time; prevHeld = false; } }
+    else if (a.type === 'return') { if (held) { held = false; lastChangeT = a.time; prevHeld = true; } }
+    else { inspected = true; if (tau === null) tau = a.time; }
+  }
+  var branch = t < WIN_B ? 'pending' : (inspected ? 'exposed' : (held ? 'safe' : 'trap'));
+  var trapOpen = branch === 'trap' && t >= TRAP_AT;
+
+  var ctx = {
+    t: t, held: held, inspected: inspected, tau: tau, branch: branch,
+    lastChangeT: lastChangeT, prevHeld: prevHeld, origin: origin
+  };
+  ctx.mech = mechState(ctx);
+  var cust = customerPose(ctx);
+  var merch = merchantPose(ctx);
+  ctx.cust = cust; ctx.merch = merch;
+  var em = emeraldState(ctx, cust);
+  var props = propState(ctx, cust, merch);
+  var cam = cameraFor(ctx);
+
+  var st = {
+    t: t, branch: branch, held: held, inspected: inspected, trapOpen: trapOpen,
+    origin: origin, cust: cust, merch: merch, em: em, mech: ctx.mech,
+    props: props, cam: cam, actions: acts, tau: tau
+  };
+  st.snapshot = {
+    branch: branch, held: held, inspected: inspected, trapOpen: trapOpen,
+    actors: {
+      merchant: [merch.x + origin[0], merch.y + origin[1], merch.z + origin[2]],
+      customer: [cust.x + origin[0], cust.y + origin[1], cust.z + origin[2]],
+      emerald: [em.pos[0] + origin[0], em.pos[1] + origin[1], em.pos[2] + origin[2]]
+    }
+  };
+  return st;
+}
+
+
+/* ============================================================================
+   RENDERER — software voxel rasteriser on a 2D canvas.
+   Flat-shaded boxes and triangles, painter-sorted, plus screen-space light.
+   ========================================================================== */
+var NEED_W = 3.62, NEED_H = 2.50, REF_DIST = 12.0;
+var LIGHT = (function () { var v = [-0.40, 0.86, 0.31], l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); return [v[0] / l, v[1] / l, v[2] / l]; })();
+var FILL = (function () { var v = [0.58, 0.26, 0.77], l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); return [v[0] / l, v[1] / l, v[2] / l]; })();
+
+var C = {
+  grass: hex('#6f8a48'), grass2: hex('#7c9750'), grass3: hex('#647c40'),
+  dirt: hex('#6b4c34'), dirt2: hex('#5a3e2a'), dirtDark: hex('#47301f'),
+  stone: hex('#988b7a'), stone2: hex('#8b7f6f'), stone3: hex('#a49786'), stone4: hex('#7f7466'),
+  wood: hex('#6f4a2b'), woodD: hex('#4d321f'), woodL: hex('#835a38'),
+  cream: hex('#e3d5b8'), rust: hex('#9c4c3b'), teal: hex('#2f6560'),
+  gold: hex('#e0b45c'), brass: hex('#c69a4a'),
+  emerald: hex('#2ecd77'), emeraldL: hex('#8dffc0'), emeraldD: hex('#0d6b3c'),
+  redstone: hex('#b23a2c'), redHot: hex('#ff7a4a'),
+  robe: hex('#2e6b4f'), robeD: hex('#245440'), trim: hex('#d5a24b'), turban: hex('#e9ddc3'), turbanD: hex('#cfc0a2'),
+  skin: hex('#d8a47b'), skinD: hex('#bb8961'), beard: hex('#e3dbc9'),
+  shirt: hex('#3d7c93'), shirtD: hex('#326677'), pants: hex('#39424f'), cap: hex('#cf6a45'), pack: hex('#7a5537'), boot: hex('#2c2f35'),
+  matA: hex('#8f4436'), matB: hex('#c9b490'), matC: hex('#3d655d'),
+  pit: hex('#14110d'), pitW: hex('#2a231b'), pitL: hex('#3a3126'),
+  wall: hex('#3e3b37'), wall2: hex('#37342f'), wall3: hex('#46423c'),
+  bg: hex('#232a28'), bg2: hex('#1c2222'), bgWood: hex('#3a2b1d'),
+  sky0: hex('#0a0f12'), sky1: hex('#16211f'), glow: hex('#ffcf8a')
+};
+
+function camFrom(st, W, H) {
+  var o = st.origin, c = st.cam;
+  var target = [o[0] + c.target[0], o[1] + c.target[1], o[2] + c.target[2]];
+  if (c.shake > 0) {
+    target[0] += Math.sin(st.t * 61.0) * c.shake;
+    target[1] += Math.cos(st.t * 47.0) * c.shake * 0.7;
+    target[2] += Math.sin(st.t * 53.0 + 1.2) * c.shake;
+  }
+  var dir = [Math.sin(c.az) * Math.cos(c.el), Math.sin(c.el), Math.cos(c.az) * Math.cos(c.el)];
+  var eye = [target[0] + dir[0] * c.dist, target[1] + dir[1] * c.dist, target[2] + dir[2] * c.dist];
+  var f = [target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]];
+  var fl = Math.sqrt(f[0] * f[0] + f[1] * f[1] + f[2] * f[2]); f = [f[0] / fl, f[1] / fl, f[2] / fl];
+  var r = [f[1] * 0 - f[2] * 1, f[2] * 0 - f[0] * 0, f[0] * 1 - f[1] * 0];
+  var rl = Math.sqrt(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]); r = [r[0] / rl, r[1] / rl, r[2] / rl];
+  var u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  var focal = Math.min(W * REF_DIST / (2 * NEED_W), H * REF_DIST / (2 * NEED_H));
+  return { eye: eye, f: f, r: r, u: u, focal: focal, cx: W / 2, cy: H / 2, dist: c.dist };
+}
+function project(cam, p) {
+  var dx = p[0] - cam.eye[0], dy = p[1] - cam.eye[1], dz = p[2] - cam.eye[2];
+  var z = dx * cam.f[0] + dy * cam.f[1] + dz * cam.f[2];
+  if (z < 0.12) return null;
+  var x = dx * cam.r[0] + dy * cam.r[1] + dz * cam.r[2];
+  var y = dx * cam.u[0] + dy * cam.u[1] + dz * cam.u[2];
+  var s = cam.focal / z;
+  return [cam.cx + x * s, cam.cy - y * s, z];
+}
+
+/* ---------------------------------------------------------------- frame state */
+var R = null;
+function beginFrame(st, W, H) {
+  R = { st: st, W: W, H: H, cam: camFrom(st, W, H), faces: [], glows: [], marks: [], lights: [] };
+}
+function shadeCol(base, n, depth, opts) {
+  if (opts && opts.flat) return brighten(base, opts.lift || 0.1);
+  var d = n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2];
+  var key = Math.max(0, d);
+  var k = 0.40 + 0.86 * key;
+  var c = [base[0] * k + 26 * key, base[1] * k + 16 * key, base[2] * k + 3 * key];
+  var fi = Math.max(0, n[0] * FILL[0] + n[1] * FILL[1] + n[2] * FILL[2]);
+  c[0] += 26 * fi; c[1] += 34 * fi; c[2] += 46 * fi;
+  var b = Math.max(0, -n[1]);
+  c[0] += 19 * b; c[1] += 11 * b; c[2] += 4 * b;
+  if (opts && opts.tint) { c[0] += opts.tint[0]; c[1] += opts.tint[1]; c[2] += opts.tint[2]; }
+  var fog = clamp((depth - 9.5) / 30, 0, 1) * 0.32;
+  c = mixc(c, [26, 32, 30], fog);
+  return c;
+}
+function face(pts, color, opts) {
+  opts = opts || {};
+  var cam = R.cam, n = pts.length, i;
+  var cx = 0, cy = 0, cz = 0;
+  for (i = 0; i < n; i++) { cx += pts[i][0]; cy += pts[i][1]; cz += pts[i][2]; }
+  cx /= n; cy /= n; cz /= n;
+  var nn;
+  if (opts.n) {
+    nn = opts.n;
+  } else if (opts.center) {
+    nn = [cx - opts.center[0], cy - opts.center[1], cz - opts.center[2]];
+    var l = Math.sqrt(nn[0] * nn[0] + nn[1] * nn[1] + nn[2] * nn[2]) || 1;
+    nn = [nn[0] / l, nn[1] / l, nn[2] / l];
+  } else {
+    var a = [pts[1][0] - pts[0][0], pts[1][1] - pts[0][1], pts[1][2] - pts[0][2]];
+    var b = [pts[2][0] - pts[0][0], pts[2][1] - pts[0][1], pts[2][2] - pts[0][2]];
+    nn = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    var nl = Math.sqrt(nn[0] * nn[0] + nn[1] * nn[1] + nn[2] * nn[2]) || 1;
+    nn = [nn[0] / nl, nn[1] / nl, nn[2] / nl];
+  }
+  var vx = cam.eye[0] - cx, vy = cam.eye[1] - cy, vz = cam.eye[2] - cz;
+  var facing = nn[0] * vx + nn[1] * vy + nn[2] * vz;
+  if (facing <= 0.0005) {
+    if (!opts.twoSided) return;
+    nn = [-nn[0], -nn[1], -nn[2]];
+  }
+  var out = [], depth = 0, zmax = 0;
+  for (i = 0; i < n; i++) {
+    var sp = project(cam, pts[i]);
+    if (!sp) return;
+    out.push(sp[0], sp[1]);
+    depth += sp[2];
+    if (sp[2] > zmax) zmax = sp[2];
+  }
+  depth /= n;
+  var col = opts.raw ? mixc(color, [255, 245, 220], (opts.lift === undefined ? 0.12 : opts.lift))
+                     : shadeCol(color, nn, depth, opts);
+  R.faces.push({
+    p: out, z: zmax - 0.02 + (opts.sortAdd || 0), c: rgbStr(col),
+    a: opts.alpha === undefined ? 1 : opts.alpha,
+    blend: opts.blend || 'src-over',
+    stroke: opts.stroke === undefined ? true : opts.stroke,
+    sc: rgbStr(scalec(col, 0.82))
+  });
+}
+function box3(xf, cx, cy, cz, sx, sy, sz, color, opts) {
+  var o = opts || {};
+  var mid = xfApply(xf, [cx, cy, cz]);
+  o.center = mid;
+  var hx = sx / 2, hy = sy / 2, hz = sz / 2;
+  var p = [
+    xfApply(xf, [cx - hx, cy - hy, cz - hz]), xfApply(xf, [cx + hx, cy - hy, cz - hz]),
+    xfApply(xf, [cx + hx, cy - hy, cz + hz]), xfApply(xf, [cx - hx, cy - hy, cz + hz]),
+    xfApply(xf, [cx - hx, cy + hy, cz - hz]), xfApply(xf, [cx + hx, cy + hy, cz - hz]),
+    xfApply(xf, [cx + hx, cy + hy, cz + hz]), xfApply(xf, [cx - hx, cy + hy, cz + hz])
+  ];
+  face([p[4], p[5], p[6], p[7]], color, o);
+  face([p[0], p[1], p[5], p[4]], color, o);
+  face([p[3], p[2], p[6], p[7]], color, o);
+  face([p[0], p[3], p[7], p[4]], color, o);
+  face([p[1], p[2], p[6], p[5]], color, o);
+  face([p[0], p[1], p[2], p[3]], color, o);
+}
+function quad3(a, b, c, d, color, opts) { face([a, b, c, d], color, opts); }
+function slab(xf, x0, y0, z0, x1, y1, z1, color, opts) {
+  box3(xf, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, Math.abs(x1 - x0), Math.abs(y1 - y0), Math.abs(z1 - z0), color, opts);
+}
+function glowAt(p, radius, color, alpha) {
+  var sp = project(R.cam, p);
+  if (!sp) return;
+  var r = radius * R.cam.focal / sp[2];
+  R.glows.push({ x: sp[0], y: sp[1], r: r, c: color, a: alpha });
+}
+function drawFrame(ctx) {
+  var i, F = R.faces;
+  F.sort(function (a, b) { return b.z - a.z; });
+  for (i = 0; i < F.length; i++) {
+    var f = F[i];
+    ctx.globalAlpha = f.a;
+    ctx.globalCompositeOperation = f.blend === 'add' ? 'lighter' : 'source-over';
+    ctx.beginPath();
+    ctx.moveTo(f.p[0], f.p[1]);
+    for (var j = 2; j < f.p.length; j += 2) ctx.lineTo(f.p[j], f.p[j + 1]);
+    ctx.closePath();
+    ctx.fillStyle = f.c;
+    ctx.fill();
+    if (f.stroke) {
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = f.sc;
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+
+/* ============================================================================
+   WORLD — the diorama itself.
+   ========================================================================== */
+var G = { x0: -3.2, x1: 4.8, z0: -2.8, z1: 4.2, tile: 1.0, depth: 1.45 };
+
+function buildGround(root, st) {
+  var i, j, x0, z0, cx, cz, r, col;
+  var h = L.hole;
+  var nx = Math.round((G.x1 - G.x0) / G.tile), nz = Math.round((G.z1 - G.z0) / G.tile);
+  // the cut sides of the floating chunk (no big top face: the tiles are the top)
+  var sides = [
+    { n: [0, 0, -1], ax: G.x0, bx: G.x1, az: G.z0, bz: G.z0, seg: G.x1 - G.x0, ux: 1, uz: 0 },
+    { n: [0, 0, 1], ax: G.x0, bx: G.x1, az: G.z1, bz: G.z1, seg: G.x1 - G.x0, ux: 1, uz: 0 },
+    { n: [-1, 0, 0], ax: G.x0, bx: G.x0, az: G.z0, bz: G.z1, seg: G.z1 - G.z0, ux: 0, uz: 1 },
+    { n: [1, 0, 0], ax: G.x1, bx: G.x1, az: G.z0, bz: G.z1, seg: G.z1 - G.z0, ux: 0, uz: 1 }
+  ];
+  for (var si = 0; si < sides.length; si++) {
+    var sd = sides[si];
+    var nseg = Math.round(sd.seg);
+    for (var q = 0; q < nseg; q++) {
+      var t0 = q / nseg, t1 = (q + 1) / nseg;
+      var ax2 = sd.ax + (sd.bx - sd.ax) * t0, az2 = sd.az + (sd.bz - sd.az) * t0;
+      var bx2 = sd.ax + (sd.bx - sd.ax) * t1, bz2 = sd.az + (sd.bz - sd.az) * t1;
+      var rr2 = hash2(si * 9.1, q * 3.7);
+      quad3(xfApply(root, [ax2, -0.07, az2]), xfApply(root, [bx2, -0.07, bz2]),
+            xfApply(root, [bx2, -0.52 - rr2 * 0.18, bz2]), xfApply(root, [ax2, -0.52 - rr2 * 0.18, az2]),
+            C.dirt, { n: sd.n });
+      quad3(xfApply(root, [ax2, -0.52 - rr2 * 0.18, az2]), xfApply(root, [bx2, -0.52 - rr2 * 0.18, bz2]),
+            xfApply(root, [bx2, -1.05, bz2]), xfApply(root, [ax2, -1.05, az2]),
+            C.dirt2, { n: sd.n });
+      quad3(xfApply(root, [ax2, -1.05, az2]), xfApply(root, [bx2, -1.05, bz2]),
+            xfApply(root, [bx2 - sd.n[0] * 0.30, -1.55, bz2 - sd.n[2] * 0.30]), xfApply(root, [ax2 - sd.n[0] * 0.30, -1.55, az2 - sd.n[2] * 0.30]),
+            C.dirtDark, { n: sd.n });
+    }
+  }
+  // a jagged rock underside
+  for (i = 0; i < 5; i++) {
+    var rx = G.x0 + 0.6 + i * ((G.x1 - G.x0 - 1.2) / 4), rz = (G.z0 + G.z1) / 2;
+    box3(root, rx, -1.62 - (i % 2) * 0.14, rz + (i % 2 ? 0.5 : -0.5), 0.9, 0.5, 1.4, C.dirtDark, {});
+  }
+  for (i = 0; i < nx; i++) {
+    for (j = 0; j < nz; j++) {
+      x0 = G.x0 + i * G.tile; z0 = G.z0 + j * G.tile;
+      cx = x0 + G.tile / 2; cz = z0 + G.tile / 2;
+      if (cx > h.x0 && cx < h.x1 && cz > h.z0 && cz < h.z1) continue;
+      r = hash2(i * 3.1, j * 7.7);
+      col = r < 0.30 ? C.stone : r < 0.62 ? C.stone2 : r < 0.86 ? C.stone3 : C.stone4;
+      if (j === 0) col = r < 0.55 ? C.grass : C.grass2;
+      if (i === 0 && j < 3) col = C.grass3;
+      box3(root, cx, -0.035, cz, G.tile - 0.045, 0.07, G.tile - 0.045, col, {});
+    }
+  }
+  // a little rubble and tufts so the plaza is not a spreadsheet
+  var rubble = [[-2.45, 2.10, 0.17], [2.95, 0.55, 0.13], [-1.95, -1.10, 0.12], [3.55, 2.95, 0.15], [0.15, 3.35, 0.14], [-2.95, 0.45, 0.16]];
+  for (i = 0; i < rubble.length; i++) {
+    box3(root, rubble[i][0], rubble[i][2] * 0.4, rubble[i][1], rubble[i][2] * 1.5, rubble[i][2], rubble[i][2] * 1.3, i % 2 ? C.stone3 : C.stone2, {});
+  }
+}
+
+function buildBackdrop(root, st) {
+  var t = st.t, i, j;
+  // ---- back wall
+  slab(root, -3.55, 0, -2.95, 3.35, 3.60, -2.62, C.wall2, {});
+  var bw = 0.94, bh = 0.44;
+  for (i = 0; i < 8; i++) {
+    for (j = 0; j < 8; j++) {
+      var x0 = -3.55 + i * bw + (j % 2 ? 0.22 : 0);
+      if (x0 + bw > 3.4) continue;
+      var r = hash2(i * 5.3, j * 2.9);
+      var col = r < 0.33 ? C.wall : r < 0.66 ? C.wall2 : C.wall3;
+      if (j > 6) col = C.wall3;
+      box3(root, x0 + bw / 2 - 0.02, j * bh + bh / 2, -2.58, bw - 0.05, bh - 0.05, 0.10, col, {});
+    }
+  }
+  slab(root, -3.62, 3.60, -3.00, 3.42, 3.74, -2.55, C.wall3, {});
+  // buttress + doorway
+  box3(root, -3.42, 1.8, -2.45, 0.22, 3.6, 0.36, C.wall3, {});
+  slab(root, -2.95, 0, -2.60, -1.92, 2.20, -2.56, C.pit, {});
+  slab(root, -2.99, 2.20, -2.64, -1.88, 2.38, -2.50, C.woodD, {});
+  slab(root, -3.02, 0, -2.64, -2.92, 2.24, -2.48, C.wood, {});
+  slab(root, -1.95, 0, -2.64, -1.85, 2.24, -2.48, C.wood, {});
+  glowAt(xfApply(root, [-2.45, 1.5, -2.5]), 1.0, [255, 170, 100], 0.18);
+
+  // ---- shelves of stock behind the merchant
+  slab(root, -1.72, 1.78, -2.52, -0.20, 1.86, -2.26, C.wood, {});
+  slab(root, 0.95, 1.94, -2.52, 2.35, 2.02, -2.26, C.wood, {});
+  for (i = 0; i < 4; i++) {
+    var jx = -1.62 + i * 0.36;
+    box3(root, jx + 0.12, 1.97, -2.38, 0.2, 0.2, 0.18, i % 2 ? C.teal : C.cream, {});
+    box3(root, jx + 0.12, 2.09, -2.38, 0.14, 0.05, 0.14, C.woodD, {});
+  }
+  for (i = 0; i < 4; i++) {
+    box3(root, 1.12 + i * 0.34, 2.14, -2.38, 0.26, 0.24, 0.2, i % 2 ? C.rust : C.woodL, {});
+  }
+  // hanging cloth
+  slab(root, 2.55, 1.35, -2.54, 3.05, 2.55, -2.44, C.rust, {});
+  slab(root, 2.55, 1.30, -2.55, 3.05, 1.40, -2.43, C.cream, {});
+  // patch of grass and a sapling by the wall
+  box3(root, -1.55, 0.14, -2.20, 0.14, 0.3, 0.14, C.grass2, {});
+  box3(root, -1.55, 0.34, -2.10, 0.26, 0.06, 0.26, C.grass, {});
+
+  // ---- shop sign on the wall
+  var sf = st.mech.signFlip || 0;
+  var sgn = xfMul(root, xfT(-0.10, 2.72, -2.56));
+  sgn = xfMul(sgn, xfRotX(-0.85 * sf));
+  box3(sgn, 0, 0, 0, 2.05, 0.72, 0.08, C.woodD, {});
+  box3(sgn, 0, 0, 0.05, 1.92, 0.60, 0.03, sf > 0.5 ? C.pitW : C.cream, { flat: true, lift: -0.06 });
+  if (sf < 0.55) {
+    box3(sgn, -0.52, 0.02, 0.075, 0.24, 0.34, 0.02, C.emerald, { flat: true });
+    box3(sgn, -0.52, 0.02, 0.09, 0.10, 0.16, 0.02, [190, 255, 220], { flat: true });
+    box3(sgn, 0.14, 0.06, 0.075, 0.12, 0.12, 0.02, C.brass, { flat: true });
+    box3(sgn, 0.44, 0.06, 0.075, 0.12, 0.12, 0.02, C.brass, { flat: true });
+    box3(sgn, 0.14, -0.24, 0.075, 0.42, 0.06, 0.02, C.woodD, {});
+    box3(sgn, 0.44, -0.24, 0.075, 0.42, 0.06, 0.02, C.woodD, {});
+  }
+
+  // ---- far stall, left, half in shadow
+  box3(root, -2.30, 0.55, -1.30, 1.55, 1.10, 0.75, C.bgWood, {});
+  box3(root, -2.30, 1.12, -1.30, 1.65, 0.08, 0.82, C.woodD, {});
+  box3(root, -3.06, 1.20, -1.30, 0.12, 1.7, 0.12, C.bgWood, {});
+  box3(root, -1.54, 1.20, -1.30, 0.12, 1.7, 0.12, C.bgWood, {});
+  box3(root, -2.30, 2.02, -1.38, 1.72, 0.10, 0.9, C.teal, {});
+  box3(root, -2.30, 1.95, -0.94, 1.72, 0.14, 0.06, C.cream, {});
+  box3(root, -2.60, 1.48, -0.82, 0.34, 0.44, 0.05, C.rust, {});
+  box3(root, -2.95, 0.22, -0.90, 0.40, 0.44, 0.40, C.woodD, {});
+  // a shopper seen from behind, far left
+  box3(root, -2.62, 0.38, -0.30, 0.22, 0.76, 0.24, C.bg, {});
+  box3(root, -2.37, 0.38, -0.30, 0.22, 0.76, 0.24, C.bg, {});
+  box3(root, -2.50, 1.05, -0.30, 0.52, 0.62, 0.30, C.bg2, {});
+  box3(root, -2.50, 1.55, -0.30, 0.42, 0.40, 0.40, C.bg, {});
+  box3(root, -2.50, 1.80, -0.30, 0.5, 0.12, 0.5, C.bg2, {});
+
+  // ---- foreground, far corners only, so the walk-in stays clear
+  box3(root, 4.05, 0.34, 3.45, 0.66, 0.68, 0.66, C.wood, {});
+  box3(root, 4.05, 0.80, 3.40, 0.46, 0.30, 0.46, C.woodL, {});
+  box3(root, -2.55, 0.32, 2.85, 0.64, 0.64, 0.64, C.wood, {});
+  box3(root, -2.40, 0.78, 2.80, 0.44, 0.36, 0.44, C.woodD, {});
+  box3(root, -1.72, 0.42, 3.15, 0.50, 0.84, 0.50, C.woodL, {});
+  box3(root, -1.72, 0.66, 3.15, 0.55, 0.1, 0.55, C.brass, {});
+}
+
+function buildBooth(root, st) {
+  var c = L.ctr, t = st.t, m = st.mech, i;
+  var w = c.x1 - c.x0, d = c.z1 - c.z0, cz = (c.z0 + c.z1) / 2;
+  // body
+  box3(root, (c.x0 + c.x1) / 2, 0.56, cz, w - 0.06, 0.92, d - 0.10, C.wood, {});
+  // front planks (facing the camera / +x)
+  var n = 7;
+  for (i = 0; i < n; i++) {
+    var z0 = c.z0 + 0.06 + i * ((d - 0.12) / n);
+    var z1 = z0 + (d - 0.12) / n - 0.045;
+    var r = hash2(i * 2.3, 4.1);
+    slab(root, c.x1 - 0.02, 0.12, z0, c.x1 + 0.05, 0.96, z1, r < 0.5 ? C.woodL : C.wood, {});
+    slab(root, c.x1 + 0.045, 0.12, z0, c.x1 + 0.065, 0.18, z1, C.woodD, {});
+    slab(root, c.x1 + 0.045, 0.90, z0, c.x1 + 0.065, 0.96, z1, C.woodD, {});
+  }
+  // a drawer in the near end
+  slab(root, c.x0 + 0.02, 0.34, c.z1 - 0.015, c.x1 - 0.02, 0.62, c.z1 + 0.035, C.woodL, {});
+  slab(root, c.x0 + 0.10, 0.45, c.z1 + 0.03, c.x1 - 0.10, 0.51, c.z1 + 0.06, C.brass, {});
+  // top
+  box3(root, (c.x0 + c.x1) / 2 - 0.01, c.top + 0.045, cz, w + 0.20, 0.09, d + 0.14, C.woodL, {});
+  box3(root, (c.x0 + c.x1) / 2 - 0.01, c.top + 0.10, cz, w + 0.22, 0.028, d + 0.16, C.woodD, {});
+  // runner cloth on top
+  slab(root, c.x0 - 0.06, c.top + 0.112, -0.86, c.x1 + 0.06, c.top + 0.125, 0.62, C.rust, {});
+  slab(root, c.x0 - 0.06, c.top + 0.112, -0.90, c.x1 + 0.06, c.top + 0.128, -0.84, C.cream, {});
+  slab(root, c.x0 - 0.06, c.top + 0.112, 0.60, c.x1 + 0.06, c.top + 0.128, 0.66, C.cream, {});
+  // hanging scale arm at the near end
+  box3(root, c.x0 + 0.10, 1.42, 0.92, 0.06, 0.66, 0.06, C.brass, {});
+  box3(root, c.x0 + 0.10, 1.72, 1.18, 0.06, 0.06, 0.56, C.brass, {});
+  box3(root, 0.24, 1.56, 1.44, 0.02, 0.30, 0.02, C.brass, {});
+  slab(root, 0.14, 1.38, 1.34, 0.34, 1.42, 1.54, C.brass, {});
+  box3(root, c.x0 + 0.10, 1.10, 0.92, 0.24, 0.06, 0.24, C.brass, {});
+  // ledger + loose coins
+  box3(root, 0.38, 1.145, 0.24, 0.30, 0.035, 0.22, C.cream, {});
+  box3(root, 0.38, 1.13, 0.24, 0.32, 0.02, 0.24, C.rust, {});
+  box3(root, 0.50, 1.19, 0.62, 0.10, 0.13, 0.10, C.emeraldD, {});
+  box3(root, 0.40, 1.17, 0.72, 0.08, 0.10, 0.08, C.emerald, {});
+  // legs
+  var lx = [c.x0 + 0.06, c.x1 - 0.06], lz = [c.z0 + 0.08, c.z1 - 0.08];
+  for (i = 0; i < 4; i++) {
+    box3(root, lx[i % 2], 0.05, lz[(i / 2) | 0], 0.1, 0.1, 0.1, C.woodD, {});
+  }
+  // coin tray + weights, far end
+  slab(root, 0.24, c.top + 0.115, -1.12, 0.60, c.top + 0.145, -0.86, C.brass, {});
+  slab(root, 0.26, c.top + 0.145, -1.10, 0.58, c.top + 0.165, -0.88, C.woodD, {});
+  box3(root, 0.38, 1.19, -1.02, 0.09, 0.12, 0.09, C.emeraldD, {});
+  box3(root, 0.48, 1.18, -1.06, 0.08, 0.11, 0.08, C.emerald, {});
+  box3(root, 0.30, 1.17, -0.58, 0.15, 0.11, 0.15, C.brass, {});
+
+  // ---- lever on the near-left corner
+  var lv = L.lever;
+  box3(root, lv[0], c.top + 0.15, lv[2], 0.34, 0.09, 0.26, C.brass, {});
+  box3(root, lv[0], c.top + 0.26, lv[2], 0.13, 0.22, 0.13, C.woodD, {});
+  var lXf = xfMul(xfT(lv[0] - 0.02, c.top + 0.34, lv[2]), xfRotX(0.5 + 1.05 * m.lever));
+  box3(lXf, 0, 0.20, 0, 0.07, 0.42, 0.07, C.brass, {});
+  box3(lXf, 0, 0.42, 0, 0.15, 0.15, 0.15, C.redstone, { flat: true, lift: 0.05 });
+
+  // ---- redstone conduit: lever -> table leg -> floor -> hatch
+  var pulse = m.wire;
+  var glowCol = mixc([96, 34, 28], [255, 132, 64], 0.22 + 0.78 * pulse);
+  var segs = [
+    [[lv[0] - 0.02, 1.10, lv[2] - 0.16], [lv[0] - 0.02, 1.10, lv[2] - 0.30]],
+    [[lv[0] - 0.02, 1.10, lv[2] - 0.30], [0.02, 0.20, lv[2] - 0.30]],
+    [[0.02, 0.05, 1.20], [0.55, 0.05, 1.36]],
+    [[0.55, 0.05, 1.36], [1.30, 0.05, 1.28]],
+    [[1.30, 0.05, 1.28], [1.75, 0.05, 0.95]]
+  ];
+  for (i = 0; i < segs.length; i++) drawWire(root, segs[i][0], segs[i][1], glowCol, pulse);
+  // junction box where the emerald grabs it
+  box3(root, 0.72, 0.30, 1.38, 0.22, 0.22, 0.18, C.brass, {});
+  box3(root, 0.72, 0.30, 1.285, 0.11, 0.11, 0.04, glowCol, { flat: true });
+
+  // ---- awning
+  slab(root, -1.32, 0, -2.05, -1.16, 3.06, -1.89, C.wood, {});
+  slab(root, 1.86, 0, -2.05, 2.02, 3.06, -1.89, C.wood, {});
+  slab(root, -1.40, 0, -2.13, -1.08, 0.20, -1.81, C.woodD, {});
+  slab(root, 1.78, 0, -2.13, 2.10, 0.20, -1.81, C.woodD, {});
+  var aw = xfMul(root, xfRotX(-0.09));
+  slab(aw, -1.44, 3.04, -2.12, 2.10, 3.16, 0.44, C.rust, {});
+  for (i = 0; i < 6; i++) {
+    var ax = -1.44 + i * (3.54 / 6);
+    slab(aw, ax, 3.04, -2.08, ax + 3.54 / 6 - 0.025, 3.17, 0.40, i % 2 ? C.cream : C.rust, {});
+  }
+  for (i = 0; i < 6; i++) {
+    var vx = -1.44 + i * (3.54 / 6);
+    slab(aw, vx, 2.86, 0.37, vx + 3.54 / 6 - 0.025, 3.05, 0.44, i % 2 ? C.cream : C.rust, {});
+  }
+
+  // ---- lanterns
+  lantern(root, -1.30, 2.42, -1.20, st);
+  lantern(root, 1.94, 2.42, -1.20, st);
+  // ---- hanging shingle, left of the booth
+  var sf2 = st.mech.signFlip || 0;
+  var sg = xfMul(root, xfT(-1.10, 2.34, 0.18));
+  sg = xfMul(sg, xfRotX(-0.75 * sf2));
+  box3(sg, -0.20, 0.33, 0, 0.025, 0.66, 0.025, C.woodD, {});
+  box3(sg, 0.20, 0.33, 0, 0.025, 0.66, 0.025, C.woodD, {});
+  box3(sg, 0, -0.05, 0, 0.86, 0.52, 0.06, C.woodD, {});
+  box3(sg, 0, -0.05, 0.04, 0.78, 0.44, 0.02, sf2 > 0.5 ? C.pitW : C.cream, { flat: true, lift: -0.05 });
+  if (sf2 < 0.6) {
+    box3(sg, -0.20, -0.02, 0.055, 0.16, 0.22, 0.02, C.emerald, { flat: true });
+    box3(sg, -0.20, -0.02, 0.065, 0.07, 0.1, 0.02, [190, 255, 220], { flat: true });
+    box3(sg, 0.16, 0.06, 0.055, 0.09, 0.09, 0.02, C.brass, { flat: true });
+    box3(sg, 0.16, -0.12, 0.055, 0.09, 0.09, 0.02, C.brass, { flat: true });
+    box3(sg, 0.02, -0.02, 0.055, 0.10, 0.03, 0.02, C.woodD, {});
+  }
+}
+function drawWire(root, a, b, col, pulse) {
+  var dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+  var len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  var n = Math.max(2, Math.round(len / 0.16));
+  for (var i = 0; i < n; i++) {
+    var k0 = i / n, k1 = (i + 1) / n;
+    var p0 = [a[0] + dx * k0, a[1] + dy * k0, a[2] + dz * k0];
+    var p1 = [a[0] + dx * k1, a[1] + dy * k1, a[2] + dz * k1];
+    var w = 0.032, quad;
+    if (Math.abs(dy) > Math.abs(dx) + Math.abs(dz)) {
+      quad = [[p0[0] + w, p0[1], p0[2] - w], [p1[0] + w, p1[1], p1[2] - w],
+              [p1[0] + w, p1[1], p1[2] + w], [p0[0] + w, p0[1], p0[2] + w]];
+    } else {
+      quad = [[p0[0] - w, p0[1] + w, p0[2]], [p1[0] - w, p1[1] + w, p1[2]],
+              [p1[0] + w, p1[1] + w, p1[2]], [p0[0] + w, p0[1] + w, p0[2]]];
+    }
+    var q = [xfApply(root, quad[0]), xfApply(root, quad[1]), xfApply(root, quad[2]), xfApply(root, quad[3])];
+    var c = mixc(C.redstone, [255, 150, 80], pulse * (0.4 + 0.6 * hash2(i, 3.2)));
+    face(q, c, { flat: true, lift: 0.05, twoSided: true, stroke: false });
+  }
+}
+function lantern(root, x, y, z, st) {
+  box3(root, x, y + 0.36, z, 0.035, 0.5, 0.035, C.woodD, {});
+  box3(root, x, y + 0.16, z, 0.26, 0.07, 0.26, C.brass, {});
+  box3(root, x, y, z, 0.22, 0.24, 0.22, C.cream, { flat: true, lift: -0.2 });
+  box3(root, x, y, z, 0.15, 0.17, 0.15, [255, 214, 148], { flat: true });
+  box3(root, x, y - 0.15, z, 0.26, 0.06, 0.26, C.brass, {});
+  glowAt(xfApply(root, [x, y, z]), 0.85, [255, 196, 120], 0.5);
+}
+
+
+/* ---------------------------------------------------------------- trapdoor */
+function buildTrap(root, st) {
+  var m = st.mech, h = L.hole, mt = L.mat, i;
+  var dep = h.depth;
+  var cxh = (h.x0 + h.x1) / 2, czh = (h.z0 + h.z1) / 2;
+  // ---- pit
+  face([xfApply(root, [h.x0, 0, h.z0]), xfApply(root, [h.x1, 0, h.z0]),
+        xfApply(root, [h.x1, -dep, h.z0]), xfApply(root, [h.x0, -dep, h.z0])], C.pitW, { n: [0, 0, 1], stroke: false });
+  face([xfApply(root, [h.x1, 0, h.z1]), xfApply(root, [h.x0, 0, h.z1]),
+        xfApply(root, [h.x0, -dep, h.z1]), xfApply(root, [h.x1, -dep, h.z1])], C.pitW, { n: [0, 0, -1], stroke: false });
+  face([xfApply(root, [h.x0, 0, h.z1]), xfApply(root, [h.x0, 0, h.z0]),
+        xfApply(root, [h.x0, -dep, h.z0]), xfApply(root, [h.x0, -dep, h.z1])], C.pitW, { n: [-1, 0, 0], stroke: false });
+  face([xfApply(root, [h.x1, 0, h.z0]), xfApply(root, [h.x1, 0, h.z1]),
+        xfApply(root, [h.x1, -dep, h.z1]), xfApply(root, [h.x1, -dep, h.z0])], C.pitW, { n: [1, 0, 0], stroke: false });
+  face([xfApply(root, [h.x0, -dep, h.z0]), xfApply(root, [h.x1, -dep, h.z0]),
+        xfApply(root, [h.x1, -dep, h.z1]), xfApply(root, [h.x0, -dep, h.z1])], C.pit, { n: [0, 1, 0], stroke: false });
+  box3(root, h.x0 + 0.5, -dep + 0.26, h.z1 - 0.5, 0.6, 0.52, 0.6, C.woodD, {});
+  box3(root, h.x1 - 0.45, -dep + 0.18, h.z0 + 0.5, 0.42, 0.36, 0.42, C.wood, {});
+  box3(root, h.x0 + 1.0, -dep + 0.07, h.z0 + 1.0, 0.55, 0.14, 0.45, C.pitL, {});
+  glowAt(xfApply(root, [h.x1 - 0.35, -dep + 0.4, h.z0 + 0.4]), 0.6, [255, 96, 60], 0.3);
+
+  // ---- rim, hatch and mechanism are hidden while the rug covers them
+  var showTrap = m.mechanism > 0.001 || m.hatch > 0.004 || m.rugFlip > 0.18 || m.rugFly > 0.38;
+  var rimC = C.woodL, SORTF = { sortAdd: 1.5 };
+  if (showTrap) {
+  slab(root, h.x0 - 0.10, 0.004, h.z0 - 0.10, h.x1 + 0.10, 0.050, h.z0, rimC, SORTF);
+  slab(root, h.x0 - 0.10, 0.004, h.z1, h.x1 + 0.10, 0.050, h.z1 + 0.10, rimC, SORTF);
+  slab(root, h.x0 - 0.10, 0.004, h.z0, h.x0, 0.050, h.z1, rimC, SORTF);
+  slab(root, h.x1, 0.004, h.z0, h.x1 + 0.10, 0.050, h.z1, rimC, SORTF);
+  // a lamp on the pit wall so the fall is readable
+  box3(root, h.x0 + 0.52, -0.62, h.z1 - 0.18, 0.14, 0.18, 0.10, [255, 168, 88], { flat: true });
+  glowAt(xfApply(root, [h.x0 + 0.52, -0.62, h.z1 - 0.30]), 1.5, [255, 150, 70], 0.55);
+  glowAt(xfApply(root, [cxh, -1.5, czh]), 1.9, [255, 120, 60], 0.25);
+
+  // ---- hatch leaves
+  var open = m.hatch;
+  var mid = (h.z0 + h.z1) / 2;
+  var lw = (h.x1 - h.x0) - 0.04, ld = (h.z1 - h.z0) / 2 - 0.02;
+  var openA = ss(st.t, TRAP_AT, TRAP_AT + 0.30);
+  var openB = ss(st.t, TRAP_AT + 0.07, TRAP_AT + 0.37);
+  if (openA < 0.02) openA = 0;
+  var xfA = xfMul(root, xfT(cxh, 0.012, h.z0));
+  xfA = xfMul(xfA, xfRotX(-openA * 2.9));
+  box3(xfA, 0, 0, ld, lw, 0.045, ld, C.wood, SORTF);
+  for (i = 0; i < 3; i++) box3(xfA, 0, 0.026, ld * (0.4 + i * 0.4), lw - 0.1, 0.02, 0.07, C.woodD, SORTF);
+  box3(xfA, -lw * 0.34, 0.03, 0.12, 0.16, 0.05, 0.10, C.brass, {});
+  box3(xfA, lw * 0.34, 0.03, 0.12, 0.16, 0.05, 0.10, C.brass, {});
+  var xfB = xfMul(root, xfT(cxh, 0.012, h.z1));
+  xfB = xfMul(xfB, xfRotX(openB * 2.9));
+  box3(xfB, 0, 0, -ld, lw, 0.045, ld, C.woodL, SORTF);
+  for (i = 0; i < 3; i++) box3(xfB, 0, 0.026, -ld * (0.4 + i * 0.4), lw - 0.1, 0.02, 0.07, C.woodD, SORTF);
+  box3(xfB, -lw * 0.34, 0.03, -0.12, 0.16, 0.05, 0.10, C.brass, {});
+  box3(xfB, lw * 0.34, 0.03, -0.12, 0.16, 0.05, 0.10, C.brass, {});
+  box3(xfB, 0, 0.03, -0.10, 0.09, 0.03, 0.14, C.brass, {});
+  }
+
+  // ---- mechanism (revealed by INSPECT REAR)
+  if (m.mechanism > 0.01) {
+    var rise = -0.16 * (1 - m.mechanism);
+    // frame
+    slab(root, h.x0 + 0.10, 0.03 + rise, h.z0 + 0.10, h.x1 - 0.10, 0.11 + rise, h.z0 + 0.20, C.brass, {});
+    slab(root, h.x0 + 0.10, 0.03 + rise, h.z1 - 0.20, h.x1 - 0.10, 0.11 + rise, h.z1 - 0.10, C.brass, {});
+    slab(root, h.x0 + 0.10, 0.03 + rise, h.z0 + 0.20, h.x0 + 0.20, 0.11 + rise, h.z1 - 0.20, C.brass, {});
+    slab(root, h.x1 - 0.20, 0.03 + rise, h.z0 + 0.20, h.x1 - 0.10, 0.11 + rise, h.z1 - 0.20, C.brass, {});
+    // plate
+    slab(root, cxh - 0.44, 0.11 + rise, czh - 0.40, cxh + 0.44, 0.18 + rise, czh + 0.40, C.stone, {});
+    slab(root, cxh - 0.44, 0.18 + rise, czh - 0.40, cxh + 0.44, 0.20 + rise, czh + 0.40, C.pitL, {});
+    slab(root, cxh - 0.11, 0.20 + rise, czh - 0.11, cxh + 0.11, 0.22 + rise, czh + 0.11, C.redstone, { flat: true });
+    // springs
+    var rr = 0.62;
+    for (i = 0; i < 4; i++) {
+      var sx = cxh + (i % 2 ? rr : -rr), sz = czh + (i < 2 ? -rr : rr);
+      for (var k = 0; k < 3; k++) {
+        box3(root, sx, 0.14 + k * 0.10 + rise, sz, 0.17, 0.05, 0.17, k % 2 ? C.stone : C.stone3, {});
+        box3(root, sx, 0.185 + k * 0.10 + rise, sz, 0.09, 0.04, 0.09, C.stone, {});
+      }
+    }
+    // piston
+    box3(root, cxh, 0.30 + rise, h.z0 + 0.26, 0.26, 0.20, 0.26, C.brass, {});
+    box3(root, cxh, 0.45 + rise, h.z0 + 0.30, 0.12, 0.22, 0.12, C.stone3, {});
+    // gear
+    var gx = xfMul(root, xfT(h.x1 - 0.34, 0.15 + rise, h.z0 + 0.34));
+    gx = xfMul(gx, xfRotY(st.t * 1.6));
+    box3(gx, 0, 0, 0, 0.30, 0.06, 0.30, C.brass, {});
+    box3(gx, 0.20, 0, 0, 0.10, 0.05, 0.10, C.brass, {});
+    box3(gx, -0.20, 0, 0, 0.10, 0.05, 0.10, C.brass, {});
+    box3(gx, 0, 0, 0.20, 0.10, 0.05, 0.10, C.brass, {});
+    box3(gx, 0, 0, -0.20, 0.10, 0.05, 0.10, C.brass, {});
+    // warning lamp
+    box3(root, h.x0 + 0.32, 0.23 + rise, h.z0 + 0.32, 0.18, 0.18, 0.18, [255, 90, 60], { flat: true });
+    var blink = 0.55 + 0.45 * Math.sin(st.t * 5.0);
+    glowAt(xfApply(root, [h.x0 + 0.32, 0.23 + rise, h.z0 + 0.32]), 0.55, [255, 110, 70], 0.35 * blink);
+  }
+
+  // ---- rug
+  var lift = m.rugLift, flip = m.rugFlip, fly = m.rugFly;
+  var hingeZ = mt.cz + mt.d / 2;
+  var rug = xfMul(root, xfT(mt.cx + 1.05 * fly, 0.082 - 0.03 * fly + 0.30 * Math.sin(fly * Math.PI), hingeZ + 0.62 * fly));
+  rug = xfMul(rug, xfRotX(-flip * 2.95 - lift * 0.85));
+  rug = xfMul(rug, xfT(-mt.cx, 0, -hingeZ));
+  var rw = mt.w / 2, rd = mt.d / 2;
+  box3(rug, mt.cx, 0.028, mt.cz, mt.w, 0.055, mt.d, C.matA, {});
+  // woven border + central medallion
+  box3(rug, mt.cx, 0.056, mt.cz - rd + 0.11, mt.w - 0.18, 0.013, 0.08, C.matB, {});
+  box3(rug, mt.cx, 0.056, mt.cz + rd - 0.11, mt.w - 0.18, 0.013, 0.08, C.matB, {});
+  box3(rug, mt.cx - rw + 0.11, 0.056, mt.cz, 0.08, 0.013, mt.d - 0.18, C.matB, {});
+  box3(rug, mt.cx + rw - 0.11, 0.056, mt.cz, 0.08, 0.013, mt.d - 0.18, C.matB, {});
+  box3(rug, mt.cx, 0.057, mt.cz - rd + 0.20, mt.w - 0.34, 0.012, 0.05, C.matC, {});
+  box3(rug, mt.cx, 0.057, mt.cz + rd - 0.20, mt.w - 0.34, 0.012, 0.05, C.matC, {});
+  box3(rug, mt.cx - rw + 0.20, 0.057, mt.cz, 0.05, 0.012, mt.d - 0.34, C.matC, {});
+  box3(rug, mt.cx + rw - 0.20, 0.057, mt.cz, 0.05, 0.012, mt.d - 0.34, C.matC, {});
+  box3(rug, mt.cx, 0.058, mt.cz, 0.62, 0.014, 0.34, C.matB, {});
+  box3(rug, mt.cx, 0.059, mt.cz, 0.36, 0.014, 0.18, C.matC, {});
+  box3(rug, mt.cx, 0.060, mt.cz, 0.14, 0.014, 0.14, C.matB, {});
+  for (i = 0; i < 4; i++) {
+    var sx2 = (i % 2 ? 1 : -1) * 0.58, sz2 = (i < 2 ? 1 : -1) * 0.64;
+    box3(rug, mt.cx + sx2, 0.058, mt.cz + sz2, 0.16, 0.014, 0.16, C.matC, {});
+    box3(rug, mt.cx + sx2, 0.059, mt.cz + sz2, 0.07, 0.014, 0.07, C.matB, {});
+  }
+  if (m.mechanism > 0.4) glowAt(xfApply(root, [cxh, 0.22, czh]), 1.1, [255, 120, 70], 0.2 * m.mechanism);
+}
+
+/* ---------------------------------------------------------------- actors */
+function blinkAt(t, times, dur) {
+  var v = 1;
+  for (var i = 0; i < times.length; i++) v = Math.min(v, 1 - 0.9 * bell(t, times[i], times[i] + dur));
+  return v;
+}
+function buildCustomer(root, st) {
+  var P = st.cust, t = st.t;
+  var base = xfMul(root, poseXf(P));
+  var i, side, sgn;
+  for (i = 0; i < 2; i++) {
+    side = i ? 'L' : 'R'; sgn = i ? -1 : 1;
+    var hip = xfMul(base, xfT(sgn * 0.135, 0.76, 0));
+    hip = xfMul(hip, xfRotX(i ? P.legL : P.legR));
+    box3(hip, 0, -0.37, 0, 0.21, 0.76, 0.24, C.pants, {});
+    box3(hip, 0, -0.66, 0.015, 0.22, 0.17, 0.28, C.boot, {});
+    box3(hip, 0, -0.10, 0, 0.225, 0.14, 0.255, C.shirtD, {});
+  }
+  box3(base, 0, 1.06, 0, 0.48, 0.62, 0.29, C.shirt, {});
+  box3(base, 0, 0.79, 0, 0.5, 0.09, 0.3, C.pants, {});
+  box3(base, 0, 1.20, 0.145, 0.34, 0.30, 0.02, C.shirtD, {});
+  box3(base, 0, 1.12, -0.28, 0.40, 0.46, 0.22, C.pack, {});
+  box3(base, 0, 1.16, -0.40, 0.30, 0.22, 0.05, C.woodD, {});
+  box3(base, 0.13, 1.25, 0.02, 0.06, 0.42, 0.30, C.woodD, {});
+  box3(base, -0.13, 1.25, 0.02, 0.06, 0.42, 0.30, C.woodD, {});
+  for (i = 0; i < 2; i++) {
+    side = i ? 'L' : 'R';
+    var ax = xfMul(root, shoulderXf(P, side));
+    box3(ax, 0, -0.29, 0, 0.17, 0.58, 0.19, C.shirt, {});
+    box3(ax, 0, -0.55, 0, 0.155, 0.14, 0.17, C.skin, {});
+    box3(ax, 0, -0.02, 0, 0.19, 0.10, 0.21, C.shirtD, {});
+  }
+  var hd = xfMul(base, xfT(0, 1.40, 0));
+  hd = xfMul(hd, xfRotY(P.headYaw));
+  hd = xfMul(hd, xfRotX(P.headPitch));
+  hd = xfMul(hd, xfRotZ(P.headRoll));
+  hd = xfMul(hd, xfT(0, -1.40, 0));
+  box3(hd, 0, 1.63, 0, 0.44, 0.44, 0.44, C.skin, {});
+  var blink = blinkAt(t, [1.4, 4.9, 6.3, 9.1, 10.9, 12.4, 14.9, 17.9], 0.12);
+  var eh = 0.075 * blink + 0.008;
+  box3(hd, -0.10, 1.68, 0.221, 0.075, eh, 0.02, [34, 36, 42], { flat: true, lift: 0 });
+  box3(hd, 0.10, 1.68, 0.221, 0.075, eh, 0.02, [34, 36, 42], { flat: true, lift: 0 });
+  box3(hd, 0, 1.555, 0.221, 0.13, 0.035, 0.02, C.skinD, { flat: true, lift: 0 });
+  box3(hd, 0, 1.60, 0.245, 0.11, 0.10, 0.08, C.skinD, {});
+  box3(hd, -0.226, 1.63, -0.03, 0.03, 0.13, 0.11, C.skinD, {});
+  box3(hd, 0.226, 1.63, -0.03, 0.03, 0.13, 0.11, C.skinD, {});
+  if (P.capOn) {
+    box3(hd, 0, 1.87, 0, 0.48, 0.14, 0.47, C.cap, {});
+    box3(hd, 0, 1.955, -0.02, 0.30, 0.06, 0.30, C.cap, {});
+    box3(hd, 0, 1.805, 0.255, 0.44, 0.06, 0.14, C.cap, {});
+    box3(hd, 0, 1.87, -0.232, 0.46, 0.12, 0.02, [168, 80, 50], { flat: true, lift: 0 });
+  }
+  box3(hd, 0, 1.455, 0.05, 0.40, 0.085, 0.36, C.matC, {});
+}
+
+function buildMerchant(root, st) {
+  var P = st.merch, t = st.t, i;
+  var base = xfMul(root, poseXf(P));
+  box3(base, 0, 0.06, 0, 0.96, 0.12, 0.70, C.trim, {});
+  box3(base, 0, 0.24, 0, 0.92, 0.26, 0.68, C.robe, {});
+  box3(base, 0, 0.50, 0, 0.86, 0.28, 0.64, C.robe, {});
+  box3(base, 0, 0.78, 0, 0.80, 0.30, 0.60, C.robe, {});
+  box3(base, 0, 0.99, 0, 0.74, 0.16, 0.56, C.robeD, {});
+  box3(base, 0, 0.86, 0.30, 0.62, 0.05, 0.02, C.trim, {});
+  box3(base, 0, 1.12, 0.305, 0.16, 0.26, 0.03, C.trim, {});
+  box3(base, 0, 1.28, 0, 0.66, 0.34, 0.44, C.robe, {});
+  box3(base, 0, 1.43, 0, 0.82, 0.14, 0.48, C.robeD, {});
+  box3(base, 0, 1.24, 0.228, 0.24, 0.26, 0.02, C.cream, {});
+  for (i = 0; i < 2; i++) {
+    var side = i ? 'L' : 'R';
+    var ax = xfMul(root, shoulderXf(P, side));
+    box3(ax, 0, -0.17, 0, 0.26, 0.40, 0.28, C.robeD, {});
+    box3(ax, 0, -0.44, 0, 0.18, 0.22, 0.20, C.robe, {});
+    box3(ax, 0, -0.57, 0, 0.16, 0.13, 0.16, C.skin, {});
+    box3(ax, 0, -0.01, 0, 0.28, 0.10, 0.30, C.trim, {});
+  }
+  var hd = xfMul(base, xfT(0, 1.50, 0));
+  hd = xfMul(hd, xfRotY(P.headYaw));
+  hd = xfMul(hd, xfRotX(P.headPitch));
+  hd = xfMul(hd, xfRotZ(P.headRoll));
+  hd = xfMul(hd, xfT(0, -1.50, 0));
+  box3(hd, 0, 1.76, 0, 0.44, 0.44, 0.44, C.skin, {});
+  box3(hd, 0, 1.72, 0.30, 0.14, 0.17, 0.24, C.skinD, {});
+  var blink = blinkAt(t, [2.2, 5.8, 8.4, 11.6, 14.6, 16.2, 18.9], 0.13);
+  var eh = 0.06 * blink + 0.008;
+  box3(hd, -0.105, 1.81, 0.221, 0.08, eh, 0.02, [34, 36, 42], { flat: true, lift: 0 });
+  box3(hd, 0.105, 1.81, 0.221, 0.08, eh, 0.02, [34, 36, 42], { flat: true, lift: 0 });
+  box3(hd, -0.11, 1.877, 0.222, 0.13, 0.035, 0.02, [86, 68, 50], { flat: true, lift: 0 });
+  box3(hd, 0.11, 1.877, 0.222, 0.13, 0.035, 0.02, [86, 68, 50], { flat: true, lift: 0 });
+  box3(hd, 0, 1.645, 0.235, 0.30, 0.05, 0.05, C.beard, {});
+  box3(hd, 0, 1.575, 0.20, 0.26, 0.12, 0.12, C.beard, {});
+  box3(hd, 0, 2.02, 0, 0.56, 0.26, 0.56, C.turban, {});
+  box3(hd, 0, 1.955, 0, 0.585, 0.06, 0.585, C.trim, {});
+  box3(hd, 0, 2.145, 0, 0.34, 0.10, 0.34, C.turbanD, {});
+  box3(hd, 0, 2.10, 0.27, 0.18, 0.12, 0.06, C.emerald, { flat: true, lift: 0.02 });
+}
+
+function buildEmerald(root, st) {
+  var e = st.em;
+  var xf = xfMul(root, xfT(e.pos[0], e.pos[1], e.pos[2]));
+  xf = xfMul(xf, xfRotY(e.yaw));
+  xf = xfMul(xf, xfRotX(e.tilt));
+  xf = xfMul(xf, xfRotZ(e.tiltZ));
+  xf = xfMul(xf, xfScale(e.scaleX, e.scaleY, e.scaleZ));
+  var w = 0.185, d = 0.185, hh = 0.33;
+  var v = [[0, hh, 0], [0, -hh, 0], [w, 0, 0], [-w, 0, 0], [0, 0, d], [0, 0, -d]];
+  var p = [], i;
+  for (i = 0; i < v.length; i++) p.push(xfApply(xf, v[i]));
+  var tris = [[0, 2, 4], [0, 4, 3], [0, 3, 5], [0, 5, 2], [1, 4, 2], [1, 3, 4], [1, 5, 3], [1, 2, 5]];
+  var c = xfApply(xf, [0, 0, 0]);
+  for (i = 0; i < tris.length; i++) {
+    var up = i < 4;
+    face([p[tris[i][0]], p[tris[i][1]], p[tris[i][2]]], up ? C.emerald : C.emeraldD,
+         { center: c, flat: true, lift: up ? 0.2 : -0.04, stroke: false });
+  }
+  box3(xf, 0, 0.02, 0, 0.055, 0.12, 0.055, [150, 255, 205], { flat: true });
+}
+
+/* ---------------------------------------------------------------- props */
+function buildProps(root, st) {
+  var pr = st.props, t = st.t, i;
+  if (pr.souv.on) {
+    var s = pr.souv, xf = xfMul(root, xfT(s.pos[0], s.pos[1], s.pos[2]));
+    xf = xfMul(xf, xfRotY(s.rot));
+    box3(xf, 0, 0.02, 0, 0.16, 0.04, 0.16, C.woodD, {});
+    box3(xf, 0, 0.12, 0, 0.13, 0.16, 0.13, C.gold, {});
+    box3(xf, 0, 0.24, 0, 0.18, 0.08, 0.18, C.gold, {});
+    box3(xf, 0, 0.32, 0, 0.10, 0.10, 0.10, C.brass, {});
+    box3(xf, 0, 0.13, 0.07, 0.06, 0.04, 0.01, [255, 240, 190], { flat: true });
+    glowAt(xfApply(root, [s.pos[0], s.pos[1] + 0.22, s.pos[2]]), 0.32, [255, 200, 110], 0.2);
+  }
+  if (pr.card.on) {
+    var c2 = pr.card, xf2 = xfMul(root, xfT(c2.pos[0], c2.pos[1], c2.pos[2]));
+    xf2 = xfMul(xf2, xfRotZ(c2.rot * 0.3));
+    box3(xf2, 0, 0, 0, 0.34, 0.44, 0.05, C.wood, {});
+    box3(xf2, 0, 0, 0.031, 0.30, 0.40, 0.01, C.cream, { flat: true, lift: -0.08 });
+    for (i = 0; i < 3; i++) box3(xf2, 0, 0.10 - i * 0.11, 0.041, 0.075, 0.075, 0.012, C.emerald, { flat: true });
+  }
+  if (pr.hat.on) {
+    var hp = pr.hat;
+    var hx = xfMul(root, xfT(hp.pos[0], hp.pos[1], hp.pos[2]));
+    hx = xfMul(hx, xfRotY(hp.rot));
+    hx = xfMul(hx, xfRotZ(hp.rotZ));
+    box3(hx, 0, 0, 0, 0.48, 0.14, 0.47, C.cap, {});
+    box3(hx, 0, 0.08, -0.02, 0.30, 0.06, 0.30, C.cap, {});
+    box3(hx, 0, -0.07, 0.255, 0.44, 0.06, 0.14, C.cap, {});
+  }
+  if (pr.ringA > 0.01) {
+    var cp = [st.cust.x, 0, st.cust.z];
+    for (i = 0; i < 44; i++) {
+      var a0 = i / 44 * Math.PI * 2, a1 = (i + 1) / 44 * Math.PI * 2;
+      var r0 = pr.ringR;
+      var q = [
+        xfApply(root, [cp[0] + Math.cos(a0) * r0, 0.045, cp[2] + Math.sin(a0) * r0]),
+        xfApply(root, [cp[0] + Math.cos(a1) * r0, 0.045, cp[2] + Math.sin(a1) * r0]),
+        xfApply(root, [cp[0] + Math.cos(a1) * (r0 + 0.06), 0.045, cp[2] + Math.sin(a1) * (r0 + 0.06)]),
+        xfApply(root, [cp[0] + Math.cos(a0) * (r0 + 0.06), 0.045, cp[2] + Math.sin(a0) * (r0 + 0.06)])
+      ];
+      face(q, [80, 255, 160], { flat: true, lift: 0.3, alpha: pr.ringA * 0.8, blend: 'add', stroke: false, twoSided: true, n: [0, 1, 0] });
+    }
+    for (i = 0; i < 12; i++) {
+      var aa = i / 12 * Math.PI * 2 + t * 0.35;
+      var px = cp[0] + Math.cos(aa) * (0.5 + 0.08 * Math.sin(t * 3 + i));
+      var pz = cp[2] + Math.sin(aa) * (0.5 + 0.08 * Math.sin(t * 3 + i));
+      var hgt = 1.7 * pr.ward;
+      if (hgt < 0.05) continue;
+      box3(root, px, 0.1 + hgt / 2, pz, 0.035, hgt, 0.035, [130, 255, 185],
+           { flat: true, lift: 0.25, alpha: 0.45 * pr.ward, blend: 'add', stroke: false });
+    }
+  }
+}
+
+/* ---------------------------------------------------------------- fx */
+function buildShadows(root, st) {
+  function sh(x, z, r, a) {
+    var h = L.hole;
+    if (x > h.x0 - 0.1 && x < h.x1 + 0.1 && z > h.z0 - 0.1 && z < h.z1 + 0.1) a *= 0.18;
+    var pts = [];
+    for (var i = 0; i < 12; i++) {
+      var an = i / 12 * Math.PI * 2;
+      pts.push(xfApply(root, [x + Math.cos(an) * r, 0.018, z + Math.sin(an) * r * 0.8]));
+    }
+    face(pts, [8, 6, 5], { raw: true, lift: 0, alpha: a, stroke: false, n: [0, 1, 0] });
+  }
+  sh(st.merch.x, st.merch.z, 0.52, 0.28);
+  sh(st.cust.x, st.cust.z, 0.40, 0.32);
+  if (!st.held && st.em.pos[1] < 2.2) sh(st.em.pos[0], st.em.pos[2], 0.16, 0.20);
+}
+function buildDust(root, st) {
+  var t = st.t, d = st.mech.dust, i, k;
+  for (i = 0; i < d.length; i++) {
+    var e = d[i], age = t - e.t0;
+    if (age < 0 || age > 1.2) continue;
+    for (k = 0; k < e.n; k++) {
+      var s1 = hash2(k * 1.7 + i * 13.1, 3.3), s2 = hash2(k * 2.3 + i * 7.7, 8.1), s3 = hash2(k * 4.1 + i * 3.9, 5.5);
+      var an = s1 * Math.PI * 2;
+      var sp = (0.25 + s2 * e.pw) * 1.6;
+      var life = 0.55 + s3 * 0.55;
+      if (age > life) continue;
+      var a2 = age / life;
+      var px = e.x + Math.cos(an) * sp * age;
+      var pz = e.z + Math.sin(an) * sp * age;
+      var py = e.y + (0.4 + s2 * 1.0) * age - 0.95 * age * age;
+      var sz = (0.028 + s3 * 0.04) * (1 + a2 * 1.3);
+      var sp2 = project(R.cam, xfApply(root, [px, Math.max(e.y - 0.02, py), pz]));
+      if (!sp2) continue;
+      var rad = Math.max(1, sz * R.cam.focal / sp2[2]);
+      var col = e.c === 1 ? '160,255,190' : e.c === 2 ? '255,170,110' : e.c === 3 ? '205,210,230' : '236,224,200';
+      R.marks.push({ x: sp2[0], y: sp2[1], r: rad, c: 'rgba(' + col + ',' + (0.40 * (1 - a2) * (1 - a2)).toFixed(3) + ')' });
+    }
+  }
+}
+function buildSparkles(root, st) {
+  var e = st.em, i;
+  for (i = 0; i < 5; i++) {
+    var ph = i * 1.9 + st.t * (0.9 + i * 0.17);
+    var rad = 0.24 + 0.12 * Math.sin(st.t * 2 + i);
+    var p = [e.pos[0] + Math.cos(ph) * rad, e.pos[1] + Math.sin(ph * 1.3) * 0.32, e.pos[2] + Math.sin(ph) * rad];
+    var sp = project(R.cam, xfApply(root, p));
+    if (!sp) continue;
+    var r = Math.max(0.7, 0.016 * R.cam.focal / sp[2]);
+    R.marks.push({ x: sp[0], y: sp[1], r: r, c: 'rgba(180,255,215,' + (0.45 * e.glow).toFixed(3) + ')' });
+  }
+  glowAt(xfApply(root, e.pos), 0.55, [70, 255, 150], 0.26 + 0.34 * e.glow);
+}
+
+
+/* ============================================================================
+   UI — canvas plumbing, transport, inputs, and the public bench hook.
+   ========================================================================== */
+var canvas = document.getElementById('stage');
+var ctx = canvas.getContext('2d');
+var DPR = 1, VW = 1, VH = 1;
+
+var app = {
+  t: 0, playing: false, speed: 1, actions: [], origin: [0, 0, 0]
+};
+var lastFrame = 0;
+
+function resize() {
+  var rect = canvas.getBoundingClientRect();
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  VW = Math.max(2, Math.round(rect.width));
+  VH = Math.max(2, Math.round(rect.height));
+  canvas.width = Math.round(VW * DPR);
+  canvas.height = Math.round(VH * DPR);
+}
+
+/* ---------------------------------------------------------------- scene draw */
+var bgCanvas = null, bgW = 0, bgH = 0, vigCanvas = null;
+function bakeBackdrop(W, H) {
+  bgCanvas = document.createElement('canvas');
+  bgCanvas.width = W; bgCanvas.height = H;
+  var bctx = bgCanvas.getContext('2d');
+  bakeBackdropInto(bctx, W, H);
+  vigCanvas = document.createElement('canvas');
+  vigCanvas.width = W; vigCanvas.height = H;
+  var vctx = vigCanvas.getContext('2d');
+  var g = vctx.createRadialGradient(W * 0.5, H * 0.48, Math.min(W, H) * 0.34, W * 0.5, H * 0.5, Math.max(W, H) * 0.78);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(1, 'rgba(4,6,7,0.62)');
+  vctx.fillStyle = g;
+  vctx.fillRect(0, 0, W, H);
+  bgW = W; bgH = H;
+}
+function drawBackdrop(W, H) {
+  if (!bgCanvas || bgW !== W || bgH !== H) bakeBackdrop(W, H);
+  ctx.drawImage(bgCanvas, 0, 0);
+}
+function bakeBackdropInto(ctx, W, H) {
+  var g = ctx.createRadialGradient(W * 0.48, H * 0.46, Math.min(W, H) * 0.10, W * 0.5, H * 0.52, Math.max(W, H) * 0.80);
+  g.addColorStop(0, '#1d2724');
+  g.addColorStop(0.45, '#131b1c');
+  g.addColorStop(1, '#070a0b');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // a warm bounce behind the booth
+  var bp = project(R.cam, [R.st.origin[0] + 0.1, R.st.origin[1] + 1.4, R.st.origin[2] - 1.6]);
+  if (bp) {
+    var rg = ctx.createRadialGradient(bp[0], bp[1], 10, bp[0], bp[1], Math.max(W, H) * 0.42);
+    rg.addColorStop(0, 'rgba(255,178,108,0.15)');
+    rg.addColorStop(0.5, 'rgba(190,120,80,0.055)');
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, W, H);
+  }
+  // cool haze at the top
+  var tg = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+  tg.addColorStop(0, 'rgba(60,110,120,0.10)');
+  tg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = tg;
+  ctx.fillRect(0, 0, W, H * 0.55);
+}
+
+function drawGlows() {
+  if (!R.glows.length) return;
+  ctx.globalCompositeOperation = 'lighter';
+  for (var i = 0; i < R.glows.length; i++) {
+    var g = R.glows[i];
+    if (g.r <= 0.2) continue;
+    var rg = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, g.r);
+    rg.addColorStop(0, 'rgba(' + g.c[0] + ',' + g.c[1] + ',' + g.c[2] + ',' + (g.a * 0.85).toFixed(3) + ')');
+    rg.addColorStop(0.45, 'rgba(' + g.c[0] + ',' + g.c[1] + ',' + g.c[2] + ',' + (g.a * 0.22).toFixed(3) + ')');
+    rg.addColorStop(1, 'rgba(' + g.c[0] + ',' + g.c[1] + ',' + g.c[2] + ',0)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(g.x - g.r, g.y - g.r, g.r * 2, g.r * 2);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+function drawMarks() {
+  for (var i = 0; i < R.marks.length; i++) {
+    var m = R.marks[i];
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, m.r, 0, 6.2832);
+    ctx.fillStyle = m.c;
+    ctx.fill();
+  }
+}
+function drawEmeraldFace(st) {
+  var em = st.em;
+  var p = project(R.cam, [st.origin[0] + em.pos[0], st.origin[1] + em.pos[1], st.origin[2] + em.pos[2]]);
+  if (!p) return;
+  var r = 0.24 * R.cam.focal / p[2];
+  var ex = r * 0.40, ey = p[1] - r * 0.16;
+  var ew = Math.max(1.1, r * 0.17), eh = Math.max(0.5, r * 0.23 * em.eyes);
+  ctx.fillStyle = 'rgba(12,36,24,0.92)';
+  ctx.beginPath(); ctx.ellipse(p[0] - ex, ey, ew, eh, 0, 0, 6.2832); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(p[0] + ex, ey, ew, eh, 0, 0, 6.2832); ctx.fill();
+  if (em.eyes > 0.4) {
+    ctx.fillStyle = 'rgba(215,255,232,0.85)';
+    var gl = Math.max(0.6, ew * 0.30);
+    ctx.beginPath(); ctx.arc(p[0] - ex - ew * 0.25, ey - eh * 0.35, gl, 0, 6.2832); ctx.fill();
+    ctx.beginPath(); ctx.arc(p[0] + ex - ew * 0.25, ey - eh * 0.35, gl, 0, 6.2832); ctx.fill();
+  }
+  if (em.glyph > 0.02) {
+    var k = em.glyph;
+    var gx2 = p[0], gy = p[1] - r * 1.9;
+    ctx.globalCompositeOperation = 'lighter';
+    var gg = ctx.createRadialGradient(gx2, gy, 0, gx2, gy, r * 1.1);
+    gg.addColorStop(0, 'rgba(120,255,180,' + (0.35 * k).toFixed(3) + ')');
+    gg.addColorStop(1, 'rgba(120,255,180,0)');
+    ctx.fillStyle = gg;
+    ctx.fillRect(gx2 - r * 1.2, gy - r * 1.2, r * 2.4, r * 2.4);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(226,255,238,' + (0.92 * k).toFixed(3) + ')';
+    var bw = Math.max(2, r * 0.16), bh = r * 0.46;
+    ctx.fillRect(gx2 - bw / 2, gy - bh * 0.9, bw, bh);
+    ctx.fillRect(gx2 - bw / 2, gy + bh * 0.28, bw, bw * 1.05);
+  }
+}
+function drawVignette(W, H) {
+  if (!vigCanvas || bgW !== W || bgH !== H) bakeBackdrop(W, H);
+  ctx.drawImage(vigCanvas, 0, 0);
+}
+
+function renderScene(st) {
+  var W = VW, H = VH;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  beginFrame(st, W, H);
+  drawBackdrop(W, H);
+  var o = st.origin;
+  var root = xfT(o[0], o[1], o[2]);
+  buildGround(root, st);
+  buildBackdrop(root, st);
+  buildBooth(root, st);
+  buildTrap(root, st);
+  buildShadows(root, st);
+  buildMerchant(root, st);
+  buildCustomer(root, st);
+  buildEmerald(root, st);
+  buildProps(root, st);
+  buildDust(root, st);
+  buildSparkles(root, st);
+  if (window.__dbgFaces !== undefined) window.__dbgFaces = R.faces.length;
+  if (window.__dbgBig) {
+    var tmp = R.faces.map(function(f){ var xs=f.p.filter(function(_,i){return i%2===0;}), ys=f.p.filter(function(_,i){return i%2===1;});
+      return {c:f.c, z:Math.round(f.z), w:Math.round(Math.max.apply(null,xs)-Math.min.apply(null,xs)), h:Math.round(Math.max.apply(null,ys)-Math.min.apply(null,ys)), x:Math.round(Math.min.apply(null,xs)), y:Math.round(Math.min.apply(null,ys))}; });
+    tmp.sort(function(a,b){ return b.w*b.h - a.w*a.h; });
+    window.__dbgBig = tmp.slice(0, 12);
+  }
+  drawFrame(ctx);
+  drawGlows();
+  drawMarks();
+  drawEmeraldFace(st);
+  drawVignette(W, H);
+}
+
+/* ---------------------------------------------------------------- hud */
+var el = {
+  play: document.getElementById('play'), playLabel: document.getElementById('playLabel'),
+  playIcon: document.getElementById('playIcon'),
+  clock: document.getElementById('clockNow'),
+  seek: document.getElementById('seek'), fill: document.getElementById('seekFill'),
+  knob: document.getElementById('seekKnob'), win: document.getElementById('seekWin'),
+  reset: document.getElementById('reset'), speeds: document.getElementById('speeds'),
+  stBranch: document.getElementById('stBranch'), stHeld: document.getElementById('stHeld'),
+  stRear: document.getElementById('stRear'), stTrap: document.getElementById('stTrap'),
+  ox: document.getElementById('ox'), oy: document.getElementById('oy'), oz: document.getElementById('oz'),
+  originReset: document.getElementById('originReset')
+};
+var inBtns = [document.getElementById('inTake'), document.getElementById('inReturn'), document.getElementById('inInspect')];
+
+function pad(v) { return (v < 10 ? '0' : '') + v.toFixed(2); }
+var hudCache = {};
+function updateHud(st) {
+  if (hudCache.clock !== st.t) {
+    el.clock.textContent = pad(st.t);
+    hudCache.clock = st.t;
+  }
+  var pct = st.t / T_MAX;
+  el.fill.style.width = (pct * 100).toFixed(3) + '%';
+  el.knob.style.left = (pct * 100).toFixed(3) + '%';
+  el.seek.setAttribute('aria-valuenow', st.t.toFixed(2));
+  var open = st.t >= WIN_A && st.t < WIN_B;
+  if (hudCache.open !== open) {
+    for (var i = 0; i < inBtns.length; i++) inBtns[i].classList.toggle('off', !open);
+    hudCache.open = open;
+  }
+  if (hudCache.branch !== st.branch) {
+    el.stBranch.textContent = st.branch;
+    el.stBranch.className = 'v ' + (st.branch === 'pending' ? 'mute' : st.branch === 'trap' ? 'bad' : st.branch === 'safe' ? 'on' : 'warn');
+    hudCache.branch = st.branch;
+  }
+  if (hudCache.held !== st.held) {
+    el.stHeld.textContent = st.held ? 'customer' : 'counter';
+    el.stHeld.className = 'v' + (st.held ? ' on' : '');
+    hudCache.held = st.held;
+  }
+  if (hudCache.insp !== st.inspected) {
+    el.stRear.textContent = st.inspected ? 'exposed' : 'concealed';
+    el.stRear.className = 'v' + (st.inspected ? ' warn' : ' mute');
+    hudCache.insp = st.inspected;
+  }
+  if (hudCache.trap !== st.trapOpen) {
+    el.stTrap.textContent = st.trapOpen ? 'open' : 'shut';
+    el.stTrap.className = 'v' + (st.trapOpen ? ' bad' : ' mute');
+    hudCache.trap = st.trapOpen;
+  }
+  var label = app.playing ? 'Pause' : (st.t >= T_MAX ? 'Replay' : 'Play');
+  if (hudCache.label !== label) {
+    el.playLabel.textContent = label;
+    el.playIcon.className = 'tri ' + (app.playing ? 's' : 'p');
+    hudCache.label = label;
+  }
+}
+
+/* ---------------------------------------------------------------- loop */
+function frame(now) {
+  if (app.playing) {
+    if (!lastFrame) lastFrame = now;
+    var dt = Math.min(0.12, (now - lastFrame) / 1000);
+    lastFrame = now;
+    app.t = Math.min(T_MAX, app.t + dt * app.speed);
+    if (app.t >= T_MAX) setPlaying(false);
+  } else {
+    lastFrame = 0;
+  }
+  var st = simulate(app.t, app.actions, app.origin);
+  renderScene(st);
+  updateHud(st);
+  requestAnimationFrame(frame);
+}
+
+/* ---------------------------------------------------------------- controls */
+function setPlaying(v) {
+  app.playing = !!v;
+  lastFrame = 0;
+  if (app.playing && app.t >= T_MAX) app.t = 0;
+  hudCache.label = null;
+}
+function seekTo(t) {
+  app.t = clamp(t, 0, T_MAX);
+  lastFrame = 0;
+  hudCache.clock = null;
+}
+function resetAll() {
+  setPlaying(false);
+  app.t = 0;
+  app.actions.length = 0;
+  lastFrame = 0;
+  hudCache.label = null;
+  hudCache.clock = null;
+}
+function addAction(type) {
+  if (app.t < WIN_A || app.t >= WIN_B) {
+    var b = type === 'take' ? inBtns[0] : type === 'return' ? inBtns[1] : inBtns[2];
+    b.classList.remove('flash');
+    void b.offsetWidth;
+    b.classList.add('flash');
+    return;
+  }
+  // an input placed in the past discards everything recorded after it
+  var keep = [];
+  for (var i = 0; i < app.actions.length; i++) {
+    if (app.actions[i].time <= app.t) keep.push(app.actions[i]);
+  }
+  app.actions = keep;
+  app.actions.push({ time: app.t, type: type });
+  lastFrame = 0;
+}
+
+function initControls() {
+  // seek: click and drag
+  var dragging = false;
+  function posToTime(ev) {
+    var r = el.seek.getBoundingClientRect();
+    var x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    return clamp(x / Math.max(1, r.width), 0, 1) * T_MAX;
+  }
+  el.seek.addEventListener('pointerdown', function (ev) {
+    dragging = true;
+    try { el.seek.setPointerCapture(ev.pointerId); } catch (e) {}
+    seekTo(posToTime(ev));
+    el.seek.focus();
+    ev.preventDefault();
+  });
+  el.seek.addEventListener('pointermove', function (ev) {
+    if (dragging) seekTo(posToTime(ev));
+  });
+  el.seek.addEventListener('pointerup', function () { dragging = false; });
+  el.seek.addEventListener('pointercancel', function () { dragging = false; });
+  el.seek.addEventListener('keydown', function (ev) {
+    var step = ev.shiftKey ? 1 : 0.1;
+    if (ev.key === 'ArrowRight') { seekTo(app.t + step); ev.preventDefault(); }
+    else if (ev.key === 'ArrowLeft') { seekTo(app.t - step); ev.preventDefault(); }
+    else if (ev.key === 'Home') { seekTo(0); ev.preventDefault(); }
+    else if (ev.key === 'End') { seekTo(T_MAX); ev.preventDefault(); }
+  });
+
+  el.play.addEventListener('click', function () { setPlaying(!app.playing); });
+  el.reset.addEventListener('click', resetAll);
+  el.speeds.addEventListener('click', function (ev) {
+    var b = ev.target.closest('.sb');
+    if (!b) return;
+    app.speed = parseFloat(b.getAttribute('data-sp'));
+    var all = el.speeds.querySelectorAll('.sb');
+    for (var i = 0; i < all.length; i++) all[i].classList.toggle('on', all[i] === b);
+  });
+  inBtns[0].addEventListener('click', function () { addAction('take'); });
+  inBtns[1].addEventListener('click', function () { addAction('return'); });
+  inBtns[2].addEventListener('click', function () { addAction('inspect'); });
+
+  function readOrigin() {
+    var x = numOr(el.ox.value, 0), y = numOr(el.oy.value, 0), z = numOr(el.oz.value, 0);
+    app.origin = [x, y, z];
+    lastFrame = 0;
+  }
+  [el.ox, el.oy, el.oz].forEach(function (inp) {
+    inp.addEventListener('input', readOrigin);
+    inp.addEventListener('change', readOrigin);
+  });
+  el.originReset.addEventListener('click', function () {
+    el.ox.value = '0'; el.oy.value = '0'; el.oz.value = '0';
+    app.origin = [0, 0, 0];
+  });
+
+  window.addEventListener('keydown', function (ev) {
+    var tag = (ev.target && ev.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (ev.key === ' ' || ev.code === 'Space') { setPlaying(!app.playing); ev.preventDefault(); }
+    else if (ev.key === 'q' || ev.key === 'Q') addAction('take');
+    else if (ev.key === 'w' || ev.key === 'W') addAction('return');
+    else if (ev.key === 'e' || ev.key === 'E') addAction('inspect');
+    else if (ev.key === 'r' || ev.key === 'R') resetAll();
+    else if (ev.key === 'ArrowRight') { seekTo(app.t + (ev.shiftKey ? 1 : 0.1)); ev.preventDefault(); }
+    else if (ev.key === 'ArrowLeft') { seekTo(app.t - (ev.shiftKey ? 1 : 0.1)); ev.preventDefault(); }
+  });
+
+  // window band + ticks on the seek rail
+  el.win.style.left = (WIN_A / T_MAX * 100) + '%';
+  el.win.style.width = ((WIN_B - WIN_A) / T_MAX * 100) + '%';
+  var ticks = document.getElementById('seekTicks');
+  var marks = [{ t: 4, l: '4' }, { t: 12, l: '12' }, { t: 14, l: '14' }];
+  for (var i = 0; i < marks.length; i++) {
+    var d = document.createElement('div');
+    d.className = 'tick major';
+    d.style.left = (marks[i].t / T_MAX * 100) + '%';
+    var e2 = document.createElement('em');
+    e2.textContent = marks[i].l;
+    d.appendChild(e2);
+    ticks.appendChild(d);
+  }
+  window.addEventListener('resize', function () { resize(); });
+}
+
+/* ---------------------------------------------------------------- bench */
+/* window.sceneBench.evaluate is a thin wrapper over simulate(), the exact
+   function the render loop uses every frame. */
+window.sceneBench = {
+  evaluate: function (opts) {
+    opts = opts || {};
+    var st = simulate(opts.time === undefined ? 0 : opts.time, opts.actions, opts.origin);
+    var s = st.snapshot;
+    return {
+      branch: s.branch,
+      held: s.held,
+      inspected: s.inspected,
+      trapOpen: s.trapOpen,
+      actors: {
+        merchant: [s.actors.merchant[0], s.actors.merchant[1], s.actors.merchant[2]],
+        customer: [s.actors.customer[0], s.actors.customer[1], s.actors.customer[2]],
+        emerald: [s.actors.emerald[0], s.actors.emerald[1], s.actors.emerald[2]]
+      }
+    };
+  }
+};
+
+/* ---------------------------------------------------------------- boot */
+resize();
+initControls();
+requestAnimationFrame(frame);
+window.addEventListener('load', resize);
+})();
+
+</script>
+</body>
+</html>
