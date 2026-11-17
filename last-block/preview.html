@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Last Block</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: grid; place-items: center; gap: 14px;
+    grid-auto-rows: min-content;
+    background: radial-gradient(120% 90% at 50% 30%, #1a2231 0%, #0a0d13 70%);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: #e8e1d2;
+  }
+  video {
+    width: min(96vw, 1180px); aspect-ratio: 16 / 9; background: #000;
+    border-radius: 10px; box-shadow: 0 30px 80px -20px #000, 0 0 0 1px #ffffff14;
+  }
+  .bar { display: flex; align-items: center; gap: 14px; font-size: 13px; color: #93a0b4; }
+  b { font-weight: 600; color: #e8e1d2; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
+  button {
+    font: inherit; font-size: 13px; color: #e8e1d2; background: #ffffff12; cursor: pointer;
+    border: 1px solid #ffffff1f; border-radius: 999px; padding: 6px 14px;
+  }
+  button:hover { background: #ffffff1f; }
+</style>
+</head>
+<body>
+  <video id="v" src="last-block.mp4" poster="poster.jpg" controls playsinline preload="auto"
+         autoplay muted loop></video>
+  <div class="bar">
+    <b>The Last Block</b>
+    <button id="snd">sound on</button>
+    <span>12 s · 1280×720 · 30 fps</span>
+  </div>
+<script>
+  const v = document.getElementById('v'), b = document.getElementById('snd');
+  b.onclick = () => { v.muted = !v.muted; b.textContent = v.muted ? 'sound on' : 'mute'; v.play(); };
+  v.addEventListener('volumechange', () => { b.textContent = v.muted ? 'sound on' : 'mute'; });
+</script>
+</body>
+</html>

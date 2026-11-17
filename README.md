@@ -1,5 +1,14 @@
 # REPO-7
 
+Two self-contained pieces:
+
+| | |
+|---|---|
+| [`index.html`](index.html) | **The Buyback Counter** — 20 s interactive voxel rehearsal. Open it directly. |
+| [`last-block/`](last-block) | **The Last Block** — 12 s voxel short. Clip, poster, storyboard, and the renderer that made it in [`last-block/src`](last-block/src). |
+
+---
+
 **The Buyback Counter** — a twenty-second, self-contained, interactive voxel rehearsal.
 
 Open [`index.html`](index.html) directly in a browser (double-click, `file://`). No server, no
